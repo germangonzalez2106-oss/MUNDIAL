@@ -125,6 +125,161 @@ def buscar_jugador_local(nombre_jugador):
             return data
     return None
 
+# ==================== PRONÓSTICOS AUTOMÁTICOS ====================
+@app.route('/api/pronostico')
+def api_pronostico():
+    local = request.args.get('local', '')
+    visitante = request.args.get('visitante', '')
+    
+    if not local or not visitante:
+        return jsonify({'error': 'Se necesitan dos equipos'}), 400
+    
+    pronostico = calcular_pronostico_partido(local, visitante)
+    
+    if pronostico:
+        return jsonify(pronostico)
+    else:
+        return jsonify({'error': 'No se pudieron obtener los datos'}), 404
+
+
+def calcular_pronostico_partido(equipo_local, equipo_visitante):
+    """
+    Calcula probabilidades para un partido entre dos selecciones
+    Retorna: (prob_local, prob_empate, prob_visitante, recomendacion)
+    """
+    # Obtener datos de los equipos
+    local = obtener_seleccion(equipo_local)
+    visitante = obtener_seleccion(equipo_visitante)
+    
+    if not local or not visitante:
+        return None
+    
+    # Calcular fuerza ofensiva (basado en goles)
+    fuerza_ofensiva_local = local.get('goles_total', 0) / local.get('jugadores', 1)
+    fuerza_ofensiva_visitante = visitante.get('goles_total', 0) / visitante.get('jugadores', 1)
+    
+    # Calcular fuerza defensiva (basado en goles en contra)
+    # Como no tenemos goles en contra directamente, usamos una relación inversa con goles a favor
+    goles_contra_local = local.get('goles_contra', 0) or (local.get('goles_total', 0) * 0.8)
+    goles_contra_visitante = visitante.get('goles_contra', 0) or (visitante.get('goles_total', 0) * 0.8)
+    
+    fuerza_defensiva_local = 100 - min(100, (goles_contra_local / local.get('jugadores', 1) * 5))
+    fuerza_defensiva_visitante = 100 - min(100, (goles_contra_visitante / visitante.get('jugadores', 1) * 5))
+    
+    # Rating promedio
+    rating_local = local.get('rating_promedio', 6.5) * 10
+    rating_visitante = visitante.get('rating_promedio', 6.5) * 10
+    
+    # Calcular fuerza total (0-100)
+    fuerza_local = (rating_local * 0.4 + fuerza_ofensiva_local * 0.3 + fuerza_defensiva_local * 0.3)
+    fuerza_visitante = (rating_visitante * 0.4 + fuerza_ofensiva_visitante * 0.3 + fuerza_defensiva_visitante * 0.3)
+    
+    # Normalizar a porcentajes
+    total_fuerza = fuerza_local + fuerza_visitante
+    prob_local = (fuerza_local / total_fuerza) * 70  # Base 70% para resultado no empate
+    prob_visitante = (fuerza_visitante / total_fuerza) * 70
+    prob_empate = 100 - prob_local - prob_visitante
+    
+    # Ajustes por factores adicionales
+    if local.get('mejor_jugador_rating', 0) > 7.5:
+        prob_local += 3
+        prob_empate -= 1.5
+    if visitante.get('mejor_jugador_rating', 0) > 7.5:
+        prob_visitante += 3
+        prob_empate -= 1.5
+    
+    # Redondear
+    prob_local = round(max(0, prob_local), 1)
+    prob_empate = round(max(0, prob_empate), 1)
+    prob_visitante = round(max(0, prob_visitante), 1)
+    
+    # Recomendación de apuesta
+    if prob_local > 50:
+        recomendacion = f"💰 Apostar por {equipo_local} (Local) - Probabilidad: {prob_local}%"
+        color = "green"
+    elif prob_visitante > 50:
+        recomendacion = f"💰 Apostar por {equipo_visitante} (Visitante) - Probabilidad: {prob_visitante}%"
+        color = "blue"
+    else:
+        recomendacion = f"🤝 Apostar al empate - Probabilidad: {prob_empate}%"
+        color = "orange"
+    
+    return {
+        'local': {'nombre': equipo_local, 'probabilidad': prob_local},
+        'empate': {'nombre': 'Empate', 'probabilidad': prob_empate},
+        'visitante': {'nombre': equipo_visitante, 'probabilidad': prob_visitante},
+        'recomendacion': recomendacion,
+        'color': color
+    }
+
+def calcular_pronostico_goleador(seleccion, top_n=5):
+    """
+    Calcula probabilidades de que un jugador marque gol
+    """
+    datos = obtener_seleccion(seleccion)
+    if not datos:
+        return []
+    
+    jugadores = datos.get('plantilla', [])
+    
+    # Calcular eficiencia goleadora
+    pronosticos = []
+    for jugador in jugadores:
+        goles = jugador.get('goles', 0)
+        partidos = jugador.get('partidos', 1)
+        if partidos == 0:
+            partidos = 1
+        
+        # Probabilidad de marcar en un partido
+        prob_gol = min(80, (goles / partidos) * 25)
+        
+        if prob_gol > 5:  # Solo mostrar jugadores con probabilidad >5%
+            pronosticos.append({
+                'jugador': jugador['jugador'],
+                'goles': goles,
+                'probabilidad': round(prob_gol, 1),
+                'rating': jugador.get('rating', 0)
+            })
+    
+    # Ordenar por probabilidad
+    pronosticos.sort(key=lambda x: x['probabilidad'], reverse=True)
+    return pronosticos[:top_n]
+
+def calcular_pronostico_marcador(equipo_local, equipo_visitante):
+    """
+    Predice el marcador más probable
+    """
+    local = obtener_seleccion(equipo_local)
+    visitante = obtener_seleccion(equipo_visitante)
+    
+    if not local or not visitante:
+        return None
+    
+    # Goles esperados basados en promedios
+    goles_local = local.get('goles_total', 0) / local.get('jugadores', 1) * 0.8
+    goles_visitante = visitante.get('goles_total', 0) / visitante.get('jugadores', 1) * 0.8
+    
+    # Redondear a enteros
+    goles_local_rounded = round(goles_local)
+    goles_visitante_rounded = round(goles_visitante)
+    
+    # Opciones de marcador
+    marcadores = [
+        {'local': goles_local_rounded, 'visitante': goles_visitante_rounded, 'probabilidad': 35},
+        {'local': goles_local_rounded + 1, 'visitante': goles_visitante_rounded, 'probabilidad': 20},
+        {'local': goles_local_rounded, 'visitante': goles_visitante_rounded + 1, 'probabilidad': 20},
+        {'local': goles_local_rounded - 1 if goles_local_rounded > 0 else 0, 'visitante': goles_visitante_rounded, 'probabilidad': 15},
+        {'local': goles_local_rounded, 'visitante': goles_visitante_rounded - 1 if goles_visitante_rounded > 0 else 0, 'probabilidad': 10}
+    ]
+    
+    return {
+        'local': equipo_local,
+        'visitante': equipo_visitante,
+        'goles_local_esperados': round(goles_local, 1),
+        'goles_visitante_esperados': round(goles_visitante, 1),
+        'marcadores': marcadores
+    }
+
 # ==================== HTML PRINCIPAL ====================
 INDEX_HTML = """
 <!DOCTYPE html>
@@ -439,6 +594,162 @@ INDEX_HTML = """
             });
     }
     
+    <!-- Sección de Pronósticos Automáticos -->
+<div class="pronosticos-section">
+    <h3>🔮 Pronósticos Automáticos</h3>
+    <p class="subtitle">Basados en estadísticas históricas y rendimiento actual</p>
+    
+    <div class="pronosticos-controls">
+        <select id="pronosticoLocal">
+            <option value="">Selecciona equipo local</option>
+            {% for s in selecciones %}
+            <option value="{{ s.nombre }}">{{ s.nombre }}</option>
+            {% endfor %}
+        </select>
+        <span>VS</span>
+        <select id="pronosticoVisitante">
+            <option value="">Selecciona equipo visitante</option>
+            {% for s in selecciones %}
+            <option value="{{ s.nombre }}">{{ s.nombre }}</option>
+            {% endfor %}
+        </select>
+        <button class="pronostico-btn" onclick="calcularPronostico()">🔮 Calcular Pronóstico</button>
+    </div>
+    
+    <div id="pronosticoResultado" class="pronostico-resultado"></div>
+</div>
+
+<style>
+.pronosticos-section {
+    background: rgba(0,0,0,0.3);
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 30px;
+}
+.pronosticos-controls {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: 15px 0;
+}
+.pronosticos-controls select {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.1);
+    color: white;
+    border: 1px solid #4CAF50;
+}
+.pronostico-btn {
+    padding: 12px 30px;
+    background: #FF9800;
+    border: none;
+    border-radius: 25px;
+    color: white;
+    cursor: pointer;
+}
+.pronostico-resultado {
+    background: #0f3460;
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 15px;
+    display: none;
+}
+.pronostico-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin: 20px 0;
+}
+.pronostico-item {
+    text-align: center;
+    padding: 15px;
+    background: #1a1a2e;
+    border-radius: 12px;
+}
+.pronostico-item .probabilidad {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #FFC107;
+}
+.pronostico-item .equipo {
+    font-size: 1.2em;
+    margin-top: 10px;
+}
+.recomendacion {
+    background: #1a1a2e;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    font-size: 1.2em;
+    margin-top: 15px;
+}
+.recomendacion.green { border-left: 5px solid #4CAF50; }
+.recomendacion.blue { border-left: 5px solid #2196F3; }
+.recomendacion.orange { border-left: 5px solid #FF9800; }
+</style>
+
+<script>
+function calcularPronostico() {
+    let local = document.getElementById('pronosticoLocal').value;
+    let visitante = document.getElementById('pronosticoVisitante').value;
+    
+    if (!local || !visitante) {
+        alert("Selecciona ambos equipos");
+        return;
+    }
+    
+    if (local === visitante) {
+        alert("Selecciona equipos diferentes");
+        return;
+    }
+    
+    let div = document.getElementById('pronosticoResultado');
+    div.innerHTML = '<p>🔄 Calculando pronóstico...</p>';
+    div.style.display = 'block';
+    
+    fetch('/api/pronostico?local=' + encodeURIComponent(local) + '&visitante=' + encodeURIComponent(visitante))
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                div.innerHTML = '<p>❌ ' + data.error + '</p>';
+                return;
+            }
+            
+            let html = '<div class="pronostico-grid">';
+            
+            // Local
+            html += '<div class="pronostico-item">';
+            html += '<div class="probabilidad">' + data.local.probabilidad + '%</div>';
+            html += '<div class="equipo">🏠 ' + data.local.nombre + '</div>';
+            html += '</div>';
+            
+            // Empate
+            html += '<div class="pronostico-item">';
+            html += '<div class="probabilidad">' + data.empate.probabilidad + '%</div>';
+            html += '<div class="equipo">🤝 Empate</div>';
+            html += '</div>';
+            
+            // Visitante
+            html += '<div class="pronostico-item">';
+            html += '<div class="probabilidad">' + data.visitante.probabilidad + '%</div>';
+            html += '<div class="equipo">✈️ ' + data.visitante.nombre + '</div>';
+            html += '</div>';
+            
+            html += '</div>';
+            html += '<div class="recomendacion ' + data.color + '">';
+            html += data.recomendacion;
+            html += '</div>';
+            
+            div.innerHTML = html;
+        })
+        .catch(e => {
+            div.innerHTML = '<p>❌ Error: ' + e.message + '</p>';
+        });
+}
+</script>
+
     function buscarJugadorEnSelecciones() {
         let termino = document.getElementById('searchInput').value;
         if (termino.length < 2) { alert("Mínimo 2 caracteres"); return; }
