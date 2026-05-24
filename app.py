@@ -17,12 +17,80 @@ except Exception as e:
     coleccion = None
 
 # ==================== DATOS ====================
+# ==================== ELIMINATORIAS POR CONTINENTE ====================
+
+ELIMINATORIAS = {
+    "Sudamérica": {
+        "clasificados": ["Argentina", "Ecuador", "Uruguay", "Colombia", "Brasil", "Paraguay"],
+        "repechaje": ["Bolivia"],
+        "eliminados": ["Venezuela", "Perú", "Chile"],
+        "max_goleador": {"jugador": "Lionel Messi", "goles": 8},
+        "fecha_final": "2025-09-10"
+    },
+    "Europa": {
+        "clasificados_directos": ["España", "Francia", "Alemania", "Inglaterra", "Países Bajos", 
+                                  "Croacia", "Portugal", "Escocia", "Austria", "Bélgica", 
+                                  "Suiza", "Noruega"],
+        "clasificados_repechaje": ["Bosnia", "República Checa", "Suecia", "Turquía"],
+        "finales_repechaje": [
+            {"partido": "Bosnia vs Italia", "resultado": "1-1 (4-1 pen)", "ganador": "Bosnia"},
+            {"partido": "Suecia vs Polonia", "resultado": "3-2", "ganador": "Suecia"},
+            {"partido": "Kosovo vs Turquía", "resultado": "0-1", "ganador": "Turquía"},
+            {"partido": "Dinamarca vs Rep. Checa", "resultado": "2-2 (1-3 pen)", "ganador": "República Checa"}
+        ],
+        "fecha_final": "2026-03-31"
+    },
+    "África": {
+        "clasificados_confirmados": ["Sudáfrica", "Egipto", "Marruecos", "Argelia", "Costa de Marfil", "Ghana"],
+        "grupos": {
+            "Grupo C": {"primero": "Sudáfrica", "puntos": 18, "segundo": "Nigeria", "tercero": "Benín"},
+            "Grupo 1": {"primero": "Egipto", "puntos": 13},
+            "Grupo 4": {"primero": "Marruecos", "puntos": 12},
+            "Grupo 7": {"primero": "Argelia", "puntos": 12},
+            "Grupo 6": {"primero": "Costa de Marfil"},
+            "Grupo 9": {"primero": "Ghana"}
+        },
+        "fecha_final": "2025-10-14"
+    },
+    "Asia": {
+        "clasificados": ["Corea del Sur", "Japón", "Irán", "Australia", "Arabia Saudita", "Uzbekistán", "Qatar", "Jordania"],
+        "grupo_c": {
+            "primero": "Corea del Sur",
+            "puntos": 16,
+            "record": "20 goles a favor, 1 en contra"
+        },
+        "resultados_destacados": [
+            {"partido": "Australia vs China", "resultado": "3-1"},
+            {"partido": "Corea del Sur vs China", "resultado": "3-0"},
+            {"partido": "Corea del Sur vs Tailandia", "resultado": "1-1"}
+        ]
+    },
+    "Norteamérica": {
+        "clasificados": ["México", "Canadá", "Estados Unidos", "Panamá"],
+        "grupo_c": {
+            "segundo": "Honduras",
+            "tercero": "Costa Rica",
+            "resultado_final": "Costa Rica 0-0 Honduras"
+        },
+        "fecha_final": "2025-11-18"
+    }
+}
+
+def obtener_resumen_eliminatorias(continente=None):
+    """Obtiene resumen de eliminatorias por continente"""
+    if continente:
+        return ELIMINATORIAS.get(continente, {})
+    return ELIMINATORIAS
+
+
+
 JUGADORES_MANUALES = {
     "messi": {"player": "Lionel Messi", "team": "Inter Miami", "league": "MLS", "goals": 12, "assists": 8, "rating": 8.2},
     "cristiano ronaldo": {"player": "Cristiano Ronaldo", "team": "Al Nassr", "league": "Saudi Pro League", "goals": 28, "assists": 6, "rating": 7.9}
 }
 
 HISTORIAL = {
+    
     ("Argentina", "Brasil"): [{"fecha": "2025-11-21", "competicion": "Eliminatorias", "resultado": "Argentina 2-1 Brasil"}],
     ("Argentina", "Francia"): [{"fecha": "2022-12-18", "competicion": "Mundial Final", "resultado": "Argentina 3-3 Francia (4-2 pen)"}],
     ("Argentina", "Alemania"): [{"fecha": "2014-07-13", "competicion": "Mundial Final", "resultado": "Alemania 1-0 Argentina"}],
@@ -30,11 +98,25 @@ HISTORIAL = {
     ("Inglaterra", "Francia"): [{"fecha": "2022-12-10", "competicion": "Mundial", "resultado": "Francia 2-1 Inglaterra"}],
     ("Portugal", "España"): [{"fecha": "2018-06-15", "competicion": "Mundial", "resultado": "Portugal 3-3 España"}],
     ("Inglaterra", "Alemania"): [{"fecha": "2021-06-29", "competicion": "Eurocopa", "resultado": "Inglaterra 2-0 Alemania"}],
+
+
+
+
 }
 
 ODDS_API_KEY = "1928777e3a71509cabffaf3c507876ce"
 
+
 # ==================== FUNCIONES ====================
+def api_eliminatorias():
+    continente = request.args.get('continente', '')
+    if continente:
+        data = ELIMINATORIAS.get(continente)
+        if not data:
+            return jsonify({'error': 'Continente no encontrado'}), 404
+        return jsonify({'continente': continente, 'datos': data})
+    return jsonify(ELIMINATORIAS)
+
 def obtener_selecciones():
     if coleccion is None: return []
     return list(coleccion.find({}, {'_id': 0}))
