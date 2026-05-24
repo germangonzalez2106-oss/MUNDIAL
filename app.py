@@ -4,13 +4,15 @@ from pymongo import MongoClient
 
 app = Flask(__name__)
 
-MONGO_URI = os.environ.get('MONGO_URI', 'mongodb+srv://mundial_user:M4nzana2026@cluster666.tqvej0i.mongodb.net/?tls=true&tlsAllowInvalidCertificates=true&retryWrites=true&w=majority&appName=Cluster666')
+# URI HARDCODEADA (la que funciona localmente)
+MONGO_URI = "mongodb://mundial_user:M4nzana2026@ac-0tfmbvr-shard-00-00.tqvej0i.mongodb.net:27017,ac-0tfmbvr-shard-00-01.tqvej0i.mongodb.net:27017,ac-0tfmbvr-shard-00-02.tqvej0i.mongodb.net:27017/?ssl=true&replicaSet=atlas-fjc1fq-shard-0&authSource=admin&tlsAllowInvalidCertificates=true"
+
+print(f"🔌 Conectando a MongoDB...")
+print(f"URI (primeros 50 chars): {MONGO_URI[:50]}...")
 
 try:
     client = MongoClient(MONGO_URI, 
-                         tls=True,
                          tlsAllowInvalidCertificates=True,
-                         tlsAllowInvalidHostnames=True,
                          serverSelectionTimeoutMS=15000)
     db = client['mundial_2026']
     coleccion = db['selecciones']
@@ -23,7 +25,13 @@ except Exception as e:
 @app.route('/')
 def index():
     if coleccion is None:
-        return "<h1>Error: No hay conexión a MongoDB</h1>"
+        return f"""
+        <h1>❌ Error de conexión</h1>
+        <p>No se pudo conectar a MongoDB Atlas.</p>
+        <p>Verifica que la URI sea correcta y que la IP de Render esté permitida.</p>
+        <hr>
+        <p><strong>URI usada:</strong> {MONGO_URI[:100]}...</p>
+        """
     
     selecciones = list(coleccion.find({}, {'_id': 0}))
     
