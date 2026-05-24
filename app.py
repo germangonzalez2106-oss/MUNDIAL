@@ -16,6 +16,41 @@ except Exception as e:
     print(f"❌ Error: {e}")
     coleccion = None
 
+
+# ==================== HISTORIAL DE ENFRENTAMIENTOS ====================
+HISTORIAL_ENFRENTAMIENTOS = {
+    ("Argentina", "Brasil"): [
+        {"fecha": "2025-11-21", "competicion": "Eliminatorias", "resultado": "Argentina 2-1 Brasil"},
+        {"fecha": "2024-07-10", "competicion": "Copa América", "resultado": "Argentina 1-0 Brasil"},
+    ],
+    ("Argentina", "Francia"): [
+        {"fecha": "2022-12-18", "competicion": "Mundial Final", "resultado": "Argentina 3-3 Francia (4-2 pen)"},
+    ],
+    ("Brasil", "Alemania"): [
+        {"fecha": "2014-07-08", "competicion": "Mundial Semifinal", "resultado": "Brasil 1-7 Alemania"},
+    ],
+    ("Inglaterra", "Francia"): [
+        {"fecha": "2022-12-10", "competicion": "Mundial", "resultado": "Francia 2-1 Inglaterra"},
+    ],
+}
+
+@app.route('/api/historial')
+def api_historial():
+    e1 = request.args.get('eq1', '')
+    e2 = request.args.get('eq2', '')
+    
+    h = HISTORIAL_ENFRENTAMIENTOS.get((e1, e2)) or HISTORIAL_ENFRENTAMIENTOS.get((e2, e1))
+    
+    if h:
+        return jsonify({
+            'total': len(h),
+            'partidos': h,
+            'ganados_local': sum(1 for p in h if p['resultado'].split()[0] == e1 and int(p['resultado'].split('-')[0].split()[-1]) > int(p['resultado'].split('-')[1].split()[0])),
+            'ganados_visitante': sum(1 for p in h if p['resultado'].split()[-1] == e2 and int(p['resultado'].split('-')[1].split()[0]) > int(p['resultado'].split('-')[0].split()[-1]))
+        })
+    
+    return jsonify({'error': 'No hay historial entre estos equipos'}), 404
+
 # ==================== JUGADORES MANUALES ====================
 JUGADORES_MANUALES = {
     "messi": {"player": "Lionel Messi", "team": "Inter Miami", "league": "MLS", "goals": 12, "assists": 8, "rating": 8.2},
@@ -69,6 +104,8 @@ def pronostico(local, visitante):
 HTML = """
 <!DOCTYPE html>
 <html>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <head>
     <title>Mundial 2026</title>
     <meta charset="UTF-8">
@@ -116,6 +153,121 @@ HTML = """
         <div class="card"><h3>⚽</h3><p>Cuotas TR</p></div>
     </div>
     
+<div class="charts" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;">
+    <div class="card">
+        <h3>⭐ Top 10 - Rating Promedio</h3>
+        <canvas id="ratingChart" style="max-height: 250px;"></canvas>
+    </div>
+    <div class="card">
+        <h3>⚽ Top 10 - Goles Totales</h3>
+        <canvas id="golesChart" style="max-height: 250px;"></canvas>
+    </div>
+</div>
+
+<script>
+    let ratingChart, golesChart;
+    
+    function cargarGraficos() {
+        fetch('/api/selecciones')
+            .then(r => r.json())
+            .then(data => {
+                // Top 10 por rating
+                let topRating = [...data].sort((a,b) => b.rating_promedio - a.rating_promedio).slice(0, 10);
+                let ctx1 = document.getElementById('ratingChart').getContext('2d');
+                if (ratingChart) ratingChart.destroy();
+                ratingChart = new Chart(ctx1, {
+                    type: 'bar',
+                    data: {
+                        labels: topRating.map(t => t.nombre),
+                        datasets: [{
+                            label: 'Rating Promedio',
+                            data: topRating.map(t => t.rating_promedio),
+                            backgroundColor: 'rgba(76, 175, 80, 0.7)',
+                            borderRadius: 10
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: true }
+                });
+                
+<!-- Historial de Enfrentamientos -->
+<h2>📜 Historial de Enfrentamientos</h2>
+<div class="flex">
+    <select id="histLocal">
+        <option value="">Selecciona equipo</option>
+        {% for s in selecciones %}<option value="{{ s.nombre }}">{{ s.nombre }}</option>{% endfor %}
+    </select>
+    <span>VS</span>
+    <select id="histVisit">
+        <option value="">Selecciona equipo</option>
+        {% for s in selecciones %}<option value="{{ s.nombre }}">{{ s.nombre }}</option>{% endfor %}
+    </select>
+    <button class="btn-blue" onclick="cargarHistorial()">📜 Ver Historial</button>
+</div>
+<div id="historialResultado" class="results"></div>
+
+<script>
+function cargarHistorial() {
+    let local = document.getElementById('histLocal').value;
+    let visitante = document.getElementById('histVisit').value;
+    if (!local || !visitante) { alert("Selecciona dos equipos"); return; }
+    if (local === visitante) { alert("Equipos diferentes"); return; }
+    
+    let div = document.getElementById('historialResultado');
+    div.innerHTML = '<p>Cargando historial...</p>';
+    div.style.display = 'block';
+    
+    fetch('/api/historial?eq1=' + encodeURIComponent(local) + '&eq2=' + encodeURIComponent(visitante))
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                div.innerHTML = '<p>❌ ' + data.error + '</p>';
+                return;
+            }
+            
+            let html = `<div style="background:#0f3460;border-radius:15px;padding:20px">
+                <h3>📊 ${local} vs ${visitante}</h3>
+                <div class="grid-3">
+                    <div class="stat-card"><div class="big-number">${data.total}</div><p>Total Partidos</p></div>
+                    <div class="stat-card"><div class="big-number">${data.ganados_local || 0}</div><p>🏆 ${local}</p></div>
+                    <div class="stat-card"><div class="big-number">${data.ganados_visitante || 0}</div><p>🏆 ${visitante}</p></div>
+                </div>
+                <h4>📋 Últimos partidos</h4>
+                <table style="width:100%"><thead><tr><th>Fecha</th><th>Competición</th><th>Resultado</th></tr></thead><tbody>`;
+            
+            for (let p of data.partidos.slice(0, 5)) {
+                html += `<tr><td>${p.fecha}</td><td>${p.competicion}</td><td>${p.resultado}</td></tr>`;
+            }
+            html += `</tbody></table></div>`;
+            div.innerHTML = html;
+        });
+}
+</script>
+
+                // Top 10 por goles
+                let topGoles = [...data].sort((a,b) => b.goles_total - a.goles_total).slice(0, 10);
+                let ctx2 = document.getElementById('golesChart').getContext('2d');
+                if (golesChart) golesChart.destroy();
+                golesChart = new Chart(ctx2, {
+                    type: 'bar',
+                    data: {
+                        labels: topGoles.map(t => t.nombre),
+                        datasets: [{
+                            label: 'Goles Totales',
+                            data: topGoles.map(t => t.goles_total),
+                            backgroundColor: 'rgba(33, 150, 243, 0.7)',
+                            borderRadius: 10
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: true }
+                });
+            });
+    }
+    
+    // Llamar a la función cuando cargue la página
+    document.addEventListener('DOMContentLoaded', cargarGraficos);
+</script>
+
+
     <h2>🔮 Pronóstico</h2>
     <div class="flex">
         <select id="eqLocal"><option value="">Local</option>{% for s in selecciones %}<option>{{ s.nombre }}</option>{% endfor %}</select>
