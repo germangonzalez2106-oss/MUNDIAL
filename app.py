@@ -1,17 +1,13 @@
 import os
 from flask import Flask
 from pymongo import MongoClient
-import certifi
 
 app = Flask(__name__)
 
-# URI alternativa con mongodb+srv
+# URI de MongoDB Atlas (configurada en Render como variable de entorno)
 MONGO_URI = os.environ.get('MONGO_URI', 'mongodb+srv://mundial_user:M4nzana2026@cluster666.tqvej0i.mongodb.net/?tls=true&tlsAllowInvalidCertificates=true&retryWrites=true&w=majority&appName=Cluster666')
-client = MongoClient(MONGO_URI, tlsCAFile=certifi.where(), serverSelectionTimeoutMS=15000)
 
 try:
-    # Deshabilitar verificación SSL completamente para este entorno
-    import ssl
     client = MongoClient(MONGO_URI, 
                          tls=True,
                          tlsAllowInvalidCertificates=True,
@@ -28,7 +24,7 @@ except Exception as e:
 @app.route('/')
 def index():
     if coleccion is None:
-        return "<h1>Error: No hay conexión a MongoDB</h1><p>Verifica la configuración de SSL.</p>"
+        return "<h1>Error: No hay conexión a MongoDB</h1>"
     
     selecciones = list(coleccion.find({}, {'_id': 0}))
     
