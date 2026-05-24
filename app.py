@@ -4,11 +4,8 @@ from pymongo import MongoClient
 
 app = Flask(__name__)
 
-# URI HARDCODEADA (la que funciona localmente)
+# URI hardcodeada para prueba
 MONGO_URI = "mongodb://mundial_user:M4nzana2026@ac-0tfmbvr-shard-00-00.tqvej0i.mongodb.net:27017,ac-0tfmbvr-shard-00-01.tqvej0i.mongodb.net:27017,ac-0tfmbvr-shard-00-02.tqvej0i.mongodb.net:27017/?ssl=true&replicaSet=atlas-fjc1fq-shard-0&authSource=admin&tlsAllowInvalidCertificates=true"
-
-print(f"🔌 Conectando a MongoDB...")
-print(f"URI (primeros 50 chars): {MONGO_URI[:50]}...")
 
 try:
     client = MongoClient(MONGO_URI, 
@@ -25,18 +22,12 @@ except Exception as e:
 @app.route('/')
 def index():
     if coleccion is None:
-        return f"""
-        <h1>❌ Error de conexión</h1>
-        <p>No se pudo conectar a MongoDB Atlas.</p>
-        <p>Verifica que la URI sea correcta y que la IP de Render esté permitida.</p>
-        <hr>
-        <p><strong>URI usada:</strong> {MONGO_URI[:100]}...</p>
-        """
+        return "<h1>❌ Error de conexión a MongoDB</h1><p>Verifica la URI y la IP whitelist.</p>"
     
     selecciones = list(coleccion.find({}, {'_id': 0}))
     
     if not selecciones:
-        return "<h1>⚠️ No hay datos en MongoDB</h1>"
+        return "<h1>⚠️ No hay datos en MongoDB</h1><p>La conexión funciona pero la colección está vacía.</p>"
     
     html = "<h1>🏆 Mundial 2026 - Selecciones</h1><ul>"
     for s in selecciones:
