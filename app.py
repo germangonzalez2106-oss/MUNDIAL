@@ -2,7 +2,178 @@ import os
 from flask import Flask, request, jsonify, render_template_string
 from pymongo import MongoClient
 
+
+
 app = Flask(__name__)
+
+# Agrega estas funciones después de las importaciones
+
+# ==================== BASE DE DATOS MANUAL DE JUGADORES ====================
+JUGADORES_MANUALES = {
+    "messi": {
+        "player": "Lionel Messi",
+        "team": "Inter Miami",
+        "league": "MLS",
+        "position": "Delantero",
+        "goals": 12,
+        "assists": 8,
+        "rating": 8.2,
+        "totalShots": 48,
+        "shotsOnTarget": 28,
+        "keyPasses": 45,
+        "successfulDribbles": 62,
+        "tackles": 8,
+        "interceptions": 4,
+        "accuratePassesPercentage": 87.5,
+        "yellowCards": 2,
+        "redCards": 0,
+        "minutesPlayed": 1170,
+        "appearances": 13,
+        "expectedGoals": 10.5,
+        "expectedAssists": 7.2,
+        "nota": "Máximo asistidor de la MLS, 100 contribuciones en 64 partidos"
+    },
+    "cristiano ronaldo": {
+        "player": "Cristiano Ronaldo",
+        "team": "Al Nassr",
+        "league": "Saudi Pro League",
+        "position": "Delantero",
+        "goals": 28,
+        "assists": 6,
+        "rating": 7.9,
+        "totalShots": 98,
+        "shotsOnTarget": 52,
+        "keyPasses": 32,
+        "successfulDribbles": 28,
+        "tackles": 5,
+        "interceptions": 2,
+        "accuratePassesPercentage": 82.3,
+        "yellowCards": 4,
+        "redCards": 0,
+        "minutesPlayed": 2430,
+        "appearances": 27,
+        "expectedGoals": 24.5,
+        "expectedAssists": 5.8,
+        "nota": "Campeón de la Saudi Pro League 2025-2026, 102 goles con Al Nassr"
+    },
+    "neymar": {
+        "player": "Neymar Jr",
+        "team": "Al Hilal",
+        "league": "Saudi Pro League",
+        "position": "Delantero",
+        "goals": 15,
+        "assists": 12,
+        "rating": 7.8,
+        "totalShots": 52,
+        "shotsOnTarget": 28,
+        "keyPasses": 58,
+        "successfulDribbles": 72,
+        "tackles": 10,
+        "interceptions": 3,
+        "accuratePassesPercentage": 85.7,
+        "yellowCards": 6,
+        "redCards": 1,
+        "minutesPlayed": 1890,
+        "appearances": 21,
+        "expectedGoals": 12.8,
+        "expectedAssists": 10.2,
+        "nota": "Líder en asistencias de la Saudi Pro League"
+    },
+    "benzema": {
+        "player": "Karim Benzema",
+        "team": "Al Ittihad",
+        "league": "Saudi Pro League",
+        "position": "Delantero",
+        "goals": 22,
+        "assists": 8,
+        "rating": 7.7,
+        "totalShots": 68,
+        "shotsOnTarget": 38,
+        "keyPasses": 28,
+        "successfulDribbles": 18,
+        "tackles": 4,
+        "interceptions": 1,
+        "accuratePassesPercentage": 83.1,
+        "yellowCards": 3,
+        "redCards": 0,
+        "minutesPlayed": 2160,
+        "appearances": 24,
+        "expectedGoals": 19.5,
+        "expectedAssists": 6.5,
+        "nota": "Segundo máximo goleador de la Saudi Pro League"
+    }
+}
+
+def buscar_jugador_local(nombre_jugador):
+    """Busca jugador en base manual"""
+    nombre_limpio = nombre_jugador.lower().strip()
+    for key, data in JUGADORES_MANUALES.items():
+        if key in nombre_limpio or nombre_limpio in key:
+            return data
+    return None
+
+# ==================== ENDPOINTS DE JUGADORES ====================
+
+@app.route('/jugador')
+def pagina_jugador():
+    """Página de búsqueda de jugadores"""
+    return render_template_string(JUGADOR_HTML)
+
+@app.route('/api/jugador/buscar')
+def api_buscar_jugador():
+    """API para buscar un jugador"""
+    nombre = request.args.get('nombre', '')
+    if not nombre:
+        return jsonify({'error': 'Nombre requerido'}), 400
+    
+    # Buscar en base manual
+    jugador = buscar_jugador_local(nombre)
+    
+    if jugador:
+        return jsonify(jugador)
+    
+    # Si no está en manual, buscar en API (opcional)
+    return jsonify({'error': 'Jugador no encontrado'}), 404
+
+@app.route('/api/jugador/comparar')
+def api_comparar_jugadores():
+    """API para comparar dos jugadores"""
+    jugador1 = request.args.get('j1', '')
+    jugador2 = request.args.get('j2', '')
+    
+    if not jugador1 or not jugador2:
+        return jsonify({'error': 'Se necesitan dos jugadores'}), 400
+    
+    j1 = buscar_jugador_local(jugador1)
+    j2 = buscar_jugador_local(jugador2)
+    
+    if not j1:
+        return jsonify({'error': f'Jugador "{jugador1}" no encontrado'}), 404
+    if not j2:
+        return jsonify({'error': f'Jugador "{jugador2}" no encontrado'}), 404
+    
+    # Preparar datos para la comparación
+    stats = ['goals', 'assists', 'rating', 'totalShots', 'shotsOnTarget', 
+             'keyPasses', 'successfulDribbles', 'tackles', 'interceptions',
+             'accuratePassesPercentage', 'expectedGoals', 'expectedAssists']
+    
+    comparacion = []
+    for stat in stats:
+        val1 = j1.get(stat, 0)
+        val2 = j2.get(stat, 0)
+        comparacion.append({
+            'stat': stat,
+            'nombre': stat.replace('_', ' ').title(),
+            'valor1': val1,
+            'valor2': val2,
+            'ganador': 1 if val1 > val2 else (2 if val2 > val1 else 0)
+        })
+    
+    return jsonify({
+        'jugador1': {'nombre': j1['player'], 'equipo': j1['team'], 'liga': j1['league']},
+        'jugador2': {'nombre': j2['player'], 'equipo': j2['team'], 'liga': j2['league']},
+        'comparacion': comparacion
+    })
 
 MONGO_URI = "mongodb://mundial_user:M4nzana2026@ac-0tfmbvr-shard-00-00.tqvej0i.mongodb.net:27017,ac-0tfmbvr-shard-00-01.tqvej0i.mongodb.net:27017,ac-0tfmbvr-shard-00-02.tqvej0i.mongodb.net:27017/?ssl=true&replicaSet=atlas-fjc1fq-shard-0&authSource=admin&tlsAllowInvalidCertificates=true"
 
