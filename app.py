@@ -1,6 +1,8 @@
 import os
+import requests
 from flask import Flask, request, jsonify, render_template_string
 from pymongo import MongoClient
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -62,55 +64,37 @@ JUGADORES_MANUALES = {
         "expectedGoals": 24.5,
         "expectedAssists": 5.8,
         "nota": "Campeón de la Saudi Pro League 2025-2026, 102 goles con Al Nassr"
-    },
-    "neymar": {
-        "player": "Neymar Jr",
-        "team": "Al Hilal",
-        "league": "Saudi Pro League",
-        "position": "Delantero",
-        "goals": 15,
-        "assists": 12,
-        "rating": 7.8,
-        "totalShots": 52,
-        "shotsOnTarget": 28,
-        "keyPasses": 58,
-        "successfulDribbles": 72,
-        "tackles": 10,
-        "interceptions": 3,
-        "accuratePassesPercentage": 85.7,
-        "yellowCards": 6,
-        "redCards": 1,
-        "minutesPlayed": 1890,
-        "appearances": 21,
-        "expectedGoals": 12.8,
-        "expectedAssists": 10.2,
-        "nota": "Líder en asistencias de la Saudi Pro League"
-    },
-    "benzema": {
-        "player": "Karim Benzema",
-        "team": "Al Ittihad",
-        "league": "Saudi Pro League",
-        "position": "Delantero",
-        "goals": 22,
-        "assists": 8,
-        "rating": 7.7,
-        "totalShots": 68,
-        "shotsOnTarget": 38,
-        "keyPasses": 28,
-        "successfulDribbles": 18,
-        "tackles": 4,
-        "interceptions": 1,
-        "accuratePassesPercentage": 83.1,
-        "yellowCards": 3,
-        "redCards": 0,
-        "minutesPlayed": 2160,
-        "appearances": 24,
-        "expectedGoals": 19.5,
-        "expectedAssists": 6.5,
-        "nota": "Segundo máximo goleador de la Saudi Pro League"
     }
 }
 
+# ==================== CUOTAS EN TIEMPO REAL ====================
+ODDS_API_KEY = "1928777e3a71509cabffaf3c507876ce"
+ODDS_BASE_URL = "https://api.the-odds-api.com/v4"
+
+def obtener_cuotas():
+    """Obtiene cuotas en tiempo real para fútbol"""
+    url = f"{ODDS_BASE_URL}/sports/soccer/odds"
+    
+    params = {
+        "apiKey": ODDS_API_KEY,
+        "regions": "us,uk,eu",
+        "markets": "h2h",
+        "oddsFormat": "decimal"
+    }
+    
+    try:
+        response = requests.get(url, params=params, timeout=15)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"❌ Error {response.status_code}")
+            return None
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return None
+
+# ==================== FUNCIONES DE SELECCIONES ====================
 def obtener_selecciones():
     if coleccion is None: return []
     return list(coleccion.find({}, {'_id': 0}))
@@ -135,83 +119,11 @@ def buscar_jugadores(termino):
     return resultados
 
 def buscar_jugador_local(nombre_jugador):
-    """Busca jugador en base manual"""
     nombre_limpio = nombre_jugador.lower().strip()
     for key, data in JUGADORES_MANUALES.items():
         if key in nombre_limpio or nombre_limpio in key:
             return data
     return None
-
-# ==================== CUOTAS EN TIEMPO REAL ====================
-ODDS_API_KEY = "1928777e3a71509cabffaf3c507876ce"
-ODDS_BASE_URL = "https://api.the-odds-api.com/v4"
-
-def obtener_cuotas_deporte(sport="soccer", region="us,uk,eu"):
-    """Obtiene cuotas en tiempo real para fútbol"""
-    url = f"{ODDS_BASE_URL}/sports/{sport}/odds"
-    
-    params = {
-        "apiKey": ODDS_API_KEY,
-        "regions": region,
-        "markets": "h2h",
-        "oddsFormat": "decimal"
-    }
-    
-    try:
-        response = requests.get(url, params=params, timeout=15)
-        
-        if response.status_code == 200:
-            return response.json()
-        else:
-            print(f"❌ Error {response.status_code}")
-            return None
-    except Exception as e:
-        print(f"❌ Error: {e}")
-        return None
-
-@app.route('/api/odds')
-def api_odds():
-    """Endpoint para obtener cuotas en tiempo real"""
-    data = obtener_cuotas_deporte()
-    
-    if data:
-        partidos = []
-        for partido in data:
-            # Extraer mejores cuotas de cada casa
-            cuotas = {'home': 0, 'draw': 0, 'away': 0}
-            mejores_casas = {'home': '', 'draw': '', 'away': ''}
-            
-            for bookmaker in partido.get('bookmakers', []):
-                for market in bookmaker.get('markets', []):
-                    if market.get('key') == 'h2h':
-                        for outcome in market.get('outcomes', []):
-                            nombre = outcome.get('name', '')
-                            precio = outcome.get('price', 0)
-                            
-                            if nombre == partido.get('home_team'):
-                                if precio > cuotas['home']:
-                                    cuotas['home'] = precio
-                                    mejores_casas['home'] = bookmaker.get('title', '')
-                            elif nombre == 'Draw':
-                                if precio > cuotas['draw']:
-                                    cuotas['draw'] = precio
-                                    mejores_casas['draw'] = bookmaker.get('title', '')
-                            else:
-                                if precio > cuotas['away']:
-                                    cuotas['away'] = precio
-                                    mejores_casas['away'] = bookmaker.get('title', '')
-            
-            partidos.append({
-                'home_team': partido.get('home_team'),
-                'away_team': partido.get('away_team'),
-                'commence_time': partido.get('commence_time'),
-                'cuotas': cuotas,
-                'mejores_casas': mejores_casas
-            })
-        
-        return jsonify({'success': True, 'games': partidos, 'count': len(partidos)})
-    
-    return jsonify({'success': False, 'error': 'No se pudieron obtener las cuotas'}), 500
 
 # ==================== HTML PRINCIPAL ====================
 INDEX_HTML = """
@@ -280,7 +192,7 @@ INDEX_HTML = """
         .chart-card h3 { margin-bottom: 15px; color: #4CAF50; text-align: center; }
         canvas { max-height: 300px; width: 100% !important; }
         
-        .search-section, .compare-section, .ranking-section {
+        .search-section, .compare-section, .ranking-section, .odds-section {
             background: rgba(0,0,0,0.3);
             border-radius: 15px;
             padding: 20px;
@@ -302,7 +214,7 @@ INDEX_HTML = """
             color: white;
         }
         .search-box input::placeholder { color: #888; }
-        .search-box button, .compare-btn {
+        .search-box button, .compare-btn, .odds-btn {
             padding: 12px 30px;
             background: #4CAF50;
             border: none;
@@ -311,6 +223,7 @@ INDEX_HTML = """
             cursor: pointer;
         }
         .compare-btn { background: #2196F3; }
+        .odds-btn { background: #FF9800; }
         
         .results {
             background: rgba(0,0,0,0.3);
@@ -334,6 +247,38 @@ INDEX_HTML = """
             background: rgba(255,255,255,0.1);
             color: white;
             border: 1px solid #4CAF50;
+        }
+        
+        .odds-card {
+            background: #0f3460;
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 15px;
+        }
+        .odds-card h4 { color: #4CAF50; margin-bottom: 8px; }
+        .odds-grid {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .odds-item {
+            flex: 1;
+            min-width: 100px;
+            background: #1a1a2e;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .odds-item .value {
+            font-size: 22px;
+            font-weight: bold;
+            color: #FFC107;
+        }
+        .odds-item .bookmaker {
+            font-size: 10px;
+            color: #666;
+            margin-top: 5px;
         }
         
         table {
@@ -381,13 +326,26 @@ INDEX_HTML = """
     </div>
     
     <h1>🏆 Mundial 2026</h1>
-    <div class="subtitle">Análisis estadístico y pronósticos de las selecciones clasificadas</div>
+    <div class="subtitle">Análisis estadístico, pronósticos y cuotas en tiempo real</div>
     
     <div class="stats-cards">
         <div class="stat-card"><h3>{{ total_selecciones }}</h3><p>Selecciones</p></div>
         <div class="stat-card"><h3>{{ total_jugadores }}</h3><p>Jugadores</p></div>
         <div class="stat-card"><h3>🔮</h3><p>Pronósticos</p></div>
-        <div class="stat-card"><h3>☁️</h3><p>MongoDB Atlas</p></div>
+        <div class="stat-card"><h3>📊</h3><p>Cuotas T.R.</p></div>
+    </div>
+    
+    <!-- SECCIÓN DE CUOTAS EN TIEMPO REAL -->
+    <div class="odds-section">
+        <h3>📊 Cuotas en Tiempo Real - Fútbol</h3>
+        <p class="subtitle">Actualizado en tiempo real | Mejores cuotas de múltiples casas</p>
+        <div style="margin-bottom: 15px;">
+            <button class="odds-btn" onclick="cargarCuotas()">🔄 Actualizar Cuotas</button>
+            <span id="lastUpdate" style="margin-left: 15px; color: #aaa; font-size: 12px;"></span>
+        </div>
+        <div id="oddsResults">
+            <p>Cargando cuotas en tiempo real...</p>
+        </div>
     </div>
     
     <div class="charts-section">
@@ -447,6 +405,40 @@ INDEX_HTML = """
     let rankingChart = null;
     let golesChart = null;
     
+    function cargarCuotas() {
+        let div = document.getElementById('oddsResults');
+        div.innerHTML = '<p>🔄 Cargando cuotas en tiempo real...</p>';
+        
+        fetch('/api/odds')
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success || data.games.length === 0) {
+                    div.innerHTML = '<p>⚠️ No hay partidos con cuotas disponibles en este momento</p>';
+                    return;
+                }
+                
+                let html = '';
+                for (let game of data.games.slice(0, 15)) {
+                    html += '<div class="odds-card">';
+                    html += '<h4>' + game.home_team + ' 🆚 ' + game.away_team + '</h4>';
+                    html += '<div class="odds-grid">';
+                    
+                    html += '<div class="odds-item"><div class="label">🏠 Local</div><div class="value">' + (game.cuotas.home > 0 ? game.cuotas.home.toFixed(2) : 'N/A') + '</div><div class="bookmaker">' + game.mejores_casas.home + '</div></div>';
+                    html += '<div class="odds-item"><div class="label">🤝 Empate</div><div class="value">' + (game.cuotas.draw > 0 ? game.cuotas.draw.toFixed(2) : 'N/A') + '</div><div class="bookmaker">' + game.mejores_casas.draw + '</div></div>';
+                    html += '<div class="odds-item"><div class="label">✈️ Visitante</div><div class="value">' + (game.cuotas.away > 0 ? game.cuotas.away.toFixed(2) : 'N/A') + '</div><div class="bookmaker">' + game.mejores_casas.away + '</div></div>';
+                    
+                    html += '</div></div>';
+                }
+                div.innerHTML = html;
+                
+                let now = new Date();
+                document.getElementById('lastUpdate').innerHTML = '🕐 Actualizado: ' + now.toLocaleTimeString();
+            })
+            .catch(e => {
+                div.innerHTML = '<p>❌ Error al cargar cuotas: ' + e.message + '</p>';
+            });
+    }
+    
     function buscarJugadorEnSelecciones() {
         let termino = document.getElementById('searchInput').value;
         if (termino.length < 2) { alert("Mínimo 2 caracteres"); return; }
@@ -458,7 +450,7 @@ INDEX_HTML = """
                     div.innerHTML = '<p>❌ No se encontraron jugadores con "' + termino + '"</p>';
                 } else {
                     let html = '<button class="close-btn" onclick="cerrarBusqueda()">Cerrar</button>';
-                    html += '<h3>✅ Resultados (' + data.length + ')</h3><tr><thead><tr><th>Jugador</th><th>Selección</th><th>Goles</th><th>Asistencias</th><th>Rating</th></tr></thead><tbody>';
+                    html += '<h3>✅ Resultados (' + data.length + ')</h3><table><thead><tr><th>Jugador</th><th>Selección</th><th>Goles</th><th>Asistencias</th><th>Rating</th></tr></thead><tbody>';
                     for (let j of data) {
                         html += '<tr><td><strong>' + j.jugador + '</strong></td><td>' + j.seleccion + '</td><td>' + j.goles + '</td><td>' + j.asistencias + '</td><td>' + j.rating + '</td></tr>';
                     }
@@ -506,8 +498,8 @@ INDEX_HTML = """
                 html += '<div style="background:#1a1a2e;padding:20px;border-radius:15px;"><h3 style="text-align:center;color:#4CAF50">' + data.equipo1.nombre + '</h3>';
                 html += '<div><strong>🏆 Rating:</strong> ' + data.equipo1.rating_promedio + '</div>';
                 html += '<div><strong>⚽ Goles:</strong> ' + data.equipo1.goles_total + '</div>';
-                html += '<div><strong>⭐ Mejor:</strong> ' + data.equipo1.mejor_rating.nombre + ' (' + data.equipo1.mejor_rating.valor + ')</div>';
-                html += '</div><div style="font-size:36px;display:flex;align-items:center;">VS</div>';
+                html += '<div><strong>⭐ Mejor:</strong> ' + data.equipo1.mejor_rating.nombre + ' (' + data.equipo1.mejor_rating.valor + ')</div></div>';
+                html += '<div style="font-size:36px;display:flex;align-items:center;">VS</div>';
                 html += '<div style="background:#1a1a2e;padding:20px;border-radius:15px;"><h3 style="text-align:center;color:#4CAF50">' + data.equipo2.nombre + '</h3>';
                 html += '<div><strong>🏆 Rating:</strong> ' + data.equipo2.rating_promedio + '</div>';
                 html += '<div><strong>⚽ Goles:</strong> ' + data.equipo2.goles_total + '</div>';
@@ -540,7 +532,8 @@ INDEX_HTML = """
             });
     }
     
-    window.onload = cargarGraficos;
+    // Cargar cuotas automáticamente
+    setTimeout(() => { cargarCuotas(); cargarGraficos(); }, 1000);
 </script>
 </body>
 </html>
@@ -565,133 +558,38 @@ JUGADOR_HTML = """
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         h1 { text-align: center; color: #4CAF50; margin-bottom: 10px; }
         .subtitle { text-align: center; color: #aaa; margin-bottom: 30px; }
-        
-        .nav-links {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .nav-links a {
-            color: #4CAF50;
-            text-decoration: none;
-            margin: 0 15px;
-            padding: 8px 20px;
-            border-radius: 25px;
-            background: rgba(0,0,0,0.3);
-        }
-        
-        .search-section, .compare-section {
-            background: rgba(0,0,0,0.3);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 30px;
-        }
-        .search-box {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        .search-box input {
-            flex: 1;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 25px;
-            font-size: 16px;
-            background: rgba(255,255,255,0.1);
-            color: white;
-        }
-        .search-box button, .compare-btn {
-            padding: 12px 30px;
-            background: #4CAF50;
-            border: none;
-            border-radius: 25px;
-            color: white;
-            cursor: pointer;
-        }
+        .nav-links { text-align: center; margin-bottom: 20px; }
+        .nav-links a { color: #4CAF50; text-decoration: none; margin: 0 15px; padding: 8px 20px; border-radius: 25px; background: rgba(0,0,0,0.3); }
+        .search-section, .compare-section { background: rgba(0,0,0,0.3); border-radius: 15px; padding: 20px; margin-bottom: 30px; }
+        .search-box { display: flex; gap: 10px; margin-top: 15px; }
+        .search-box input { flex: 1; padding: 12px 20px; border: none; border-radius: 25px; background: rgba(255,255,255,0.1); color: white; }
+        .search-box button, .compare-btn { padding: 12px 30px; background: #4CAF50; border: none; border-radius: 25px; color: white; cursor: pointer; }
         .compare-btn { background: #2196F3; }
-        
-        .results {
-            background: rgba(0,0,0,0.3);
-            border-radius: 15px;
-            padding: 20px;
-            margin-top: 20px;
-            display: none;
-        }
-        .compare-selects {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            align-items: center;
-            margin-top: 15px;
-        }
-        .compare-selects input {
-            flex: 1;
-            padding: 12px;
-            border-radius: 25px;
-            border: none;
-            background: rgba(255,255,255,0.1);
-            color: white;
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 15px;
-        }
-        .stat-card {
-            background: #0f3460;
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-        }
+        .results { background: rgba(0,0,0,0.3); border-radius: 15px; padding: 20px; margin-top: 20px; display: none; }
+        .compare-selects { display: flex; gap: 15px; align-items: center; margin-top: 15px; flex-wrap: wrap; }
+        .compare-selects input { flex: 1; padding: 12px; border-radius: 25px; border: none; background: rgba(255,255,255,0.1); color: white; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+        .stat-card { background: #0f3460; padding: 15px; border-radius: 10px; text-align: center; }
         .stat-card h3 { font-size: 2em; color: #4CAF50; }
-        .comparacion-grid {
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
-            gap: 20px;
-            margin-top: 20px;
-        }
-        .comparacion-equipo {
-            background: #1a1a2e;
-            padding: 15px;
-            border-radius: 10px;
-        }
+        .comparacion-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 20px; margin-top: 20px; }
+        .comparacion-equipo { background: #1a1a2e; padding: 15px; border-radius: 10px; }
         .comparacion-equipo h3 { text-align: center; color: #4CAF50; }
         .vs { font-size: 36px; display: flex; align-items: center; color: #FFC107; }
-        .stat-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #333;
-        }
-        .close-btn {
-            background: #f44336;
-            border: none;
-            padding: 8px 20px;
-            border-radius: 20px;
-            cursor: pointer;
-            color: white;
-            margin-bottom: 15px;
-        }
-        @media (max-width: 768px) {
-            .comparacion-grid { grid-template-columns: 1fr; }
-            .vs { text-align: center; padding: 10px 0; }
-        }
+        .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #333; }
+        .close-btn { background: #f44336; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; color: white; margin-bottom: 15px; }
+        @media (max-width: 768px) { .comparacion-grid { grid-template-columns: 1fr; } .vs { text-align: center; padding: 10px 0; } }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="nav-links">
-        <a href="/">🏆 Ranking</a>
-        <a href="/jugador">🔍 Buscar Jugador</a>
-    </div>
-    
+    <div class="nav-links"><a href="/">🏆 Ranking</a><a href="/jugador">🔍 Buscar Jugador</a></div>
     <h1>🔍 Buscador de Jugadores</h1>
     <div class="subtitle">Estadísticas actualizadas 2025-2026</div>
     
     <div class="search-section">
         <h3>🔍 Buscar Jugador</h3>
         <div class="search-box">
-            <input type="text" id="searchInput" placeholder="Ej: Messi, Ronaldo, Mbappé...">
+            <input type="text" id="searchInput" placeholder="Ej: Messi, Ronaldo...">
             <button onclick="buscarJugador()">Buscar</button>
         </div>
         <div id="resultadoBusqueda" class="results"></div>
@@ -713,25 +611,19 @@ JUGADOR_HTML = """
     function buscarJugador() {
         let nombre = document.getElementById('searchInput').value;
         if (nombre.length < 2) { alert("Mínimo 2 caracteres"); return; }
-        
         fetch('/api/jugador/buscar?nombre=' + encodeURIComponent(nombre))
             .then(r => r.json())
             .then(data => {
                 let div = document.getElementById('resultadoBusqueda');
-                if (data.error) {
-                    div.innerHTML = '<p>❌ ' + data.error + '</p>';
-                } else {
+                if (data.error) { div.innerHTML = '<p>❌ ' + data.error + '</p>'; }
+                else {
                     let html = '<button class="close-btn" onclick="cerrarBusqueda()">Cerrar</button>';
                     html += '<h3>' + data.player + '</h3>';
                     html += '<div class="stats-grid">';
                     html += '<div class="stat-card"><h3>' + data.goals + '</h3><p>Goles</p></div>';
                     html += '<div class="stat-card"><h3>' + data.assists + '</h3><p>Asistencias</p></div>';
                     html += '<div class="stat-card"><h3>' + data.rating + '</h3><p>Rating</p></div>';
-                    html += '<div class="stat-card"><h3>' + data.totalShots + '</h3><p>Tiros</p></div>';
-                    html += '<div class="stat-card"><h3>' + data.shotsOnTarget + '</h3><p>Tiros a puerta</p></div>';
-                    html += '<div class="stat-card"><h3>' + data.keyPasses + '</h3><p>Pases clave</p></div>';
-                    html += '</div>';
-                    html += '<p><strong>Equipo:</strong> ' + data.team + ' (' + data.league + ')</p>';
+                    html += '</div><p><strong>Equipo:</strong> ' + data.team + ' (' + data.league + ')</p>';
                     if (data.nota) html += '<p><strong>📌 Nota:</strong> ' + data.nota + '</p>';
                     div.innerHTML = html;
                 }
@@ -743,43 +635,21 @@ JUGADOR_HTML = """
         let j1 = document.getElementById('jugador1').value;
         let j2 = document.getElementById('jugador2').value;
         if (!j1 || !j2) { alert("Ingresa dos jugadores"); return; }
-        
         fetch('/api/jugador/comparar?j1=' + encodeURIComponent(j1) + '&j2=' + encodeURIComponent(j2))
             .then(r => r.json())
             .then(data => {
-                if (data.error) {
-                    alert(data.error);
-                    return;
-                }
-                
+                if (data.error) { alert(data.error); return; }
                 let html = '<button class="close-btn" onclick="cerrarComparacion()">Cerrar</button>';
                 html += '<div class="comparacion-grid">';
-                
-                html += '<div class="comparacion-equipo">';
-                html += '<h3>' + data.jugador1.nombre + '</h3>';
-                html += '<p><small>' + data.jugador1.equipo + ' (' + data.jugador1.liga + ')</small></p>';
+                html += '<div class="comparacion-equipo"><h3>' + data.jugador1.nombre + '</h3><p><small>' + data.jugador1.equipo + '</small></p>';
                 html += '<div class="stat-row"><span>⚽ Goles</span><span>' + getValor(data.comparacion, 'goals', 1) + '</span></div>';
                 html += '<div class="stat-row"><span>🎯 Asistencias</span><span>' + getValor(data.comparacion, 'assists', 1) + '</span></div>';
-                html += '<div class="stat-row"><span>⭐ Rating</span><span>' + getValor(data.comparacion, 'rating', 1) + '</span></div>';
-                html += '<div class="stat-row"><span>🎯 Tiros</span><span>' + getValor(data.comparacion, 'totalShots', 1) + '</span></div>';
-                html += '<div class="stat-row"><span>🎯 Tiros a puerta</span><span>' + getValor(data.comparacion, 'shotsOnTarget', 1) + '</span></div>';
-                html += '<div class="stat-row"><span>🔑 Pases clave</span><span>' + getValor(data.comparacion, 'keyPasses', 1) + '</span></div>';
-                html += '</div>';
-                
+                html += '<div class="stat-row"><span>⭐ Rating</span><span>' + getValor(data.comparacion, 'rating', 1) + '</span></div></div>';
                 html += '<div class="vs">VS</div>';
-                
-                html += '<div class="comparacion-equipo">';
-                html += '<h3>' + data.jugador2.nombre + '</h3>';
-                html += '<p><small>' + data.jugador2.equipo + ' (' + data.jugador2.liga + ')</small></p>';
+                html += '<div class="comparacion-equipo"><h3>' + data.jugador2.nombre + '</h3><p><small>' + data.jugador2.equipo + '</small></p>';
                 html += '<div class="stat-row"><span>⚽ Goles</span><span>' + getValor(data.comparacion, 'goals', 2) + '</span></div>';
                 html += '<div class="stat-row"><span>🎯 Asistencias</span><span>' + getValor(data.comparacion, 'assists', 2) + '</span></div>';
-                html += '<div class="stat-row"><span>⭐ Rating</span><span>' + getValor(data.comparacion, 'rating', 2) + '</span></div>';
-                html += '<div class="stat-row"><span>🎯 Tiros</span><span>' + getValor(data.comparacion, 'totalShots', 2) + '</span></div>';
-                html += '<div class="stat-row"><span>🎯 Tiros a puerta</span><span>' + getValor(data.comparacion, 'shotsOnTarget', 2) + '</span></div>';
-                html += '<div class="stat-row"><span>🔑 Pases clave</span><span>' + getValor(data.comparacion, 'keyPasses', 2) + '</span></div>';
-                html += '</div>';
-                
-                html += '</div>';
+                html += '<div class="stat-row"><span>⭐ Rating</span><span>' + getValor(data.comparacion, 'rating', 2) + '</span></div></div></div>';
                 document.getElementById('comparacionResultado').innerHTML = html;
                 document.getElementById('comparacionResultado').style.display = 'block';
             });
@@ -787,47 +657,14 @@ JUGADOR_HTML = """
     
     function getValor(comparacion, stat, jugador) {
         let item = comparacion.find(c => c.stat === stat);
-        if (!item) return 'N/A';
-        return jugador === 1 ? item.valor1 : item.valor2;
+        return item ? (jugador === 1 ? item.valor1 : item.valor2) : 'N/A';
     }
-    
     function cerrarBusqueda() { document.getElementById('resultadoBusqueda').style.display = 'none'; }
     function cerrarComparacion() { document.getElementById('comparacionResultado').style.display = 'none'; }
 </script>
 </body>
 </html>
 """
-
-# ==================== FUNCIONES DE SELECCIONES ====================
-def obtener_selecciones():
-    if coleccion is None: return []
-    return list(coleccion.find({}, {'_id': 0}))
-
-def obtener_seleccion(nombre):
-    if coleccion is None: return None
-    return coleccion.find_one({'nombre': nombre}, {'_id': 0})
-
-def buscar_jugadores(termino):
-    if coleccion is None: return []
-    resultados = []
-    for sel in coleccion.find({}, {'_id': 0}):
-        for jug in sel.get('plantilla', []):
-            if termino.lower() in jug.get('jugador', '').lower():
-                resultados.append({
-                    'seleccion': sel['nombre'],
-                    'jugador': jug['jugador'],
-                    'goles': jug['goles'],
-                    'asistencias': jug['asistencias'],
-                    'rating': jug['rating']
-                })
-    return resultados
-
-def buscar_jugador_local(nombre_jugador):
-    nombre_limpio = nombre_jugador.lower().strip()
-    for key, data in JUGADORES_MANUALES.items():
-        if key in nombre_limpio or nombre_limpio in key:
-            return data
-    return None
 
 # ==================== RUTAS ====================
 @app.route('/')
@@ -927,27 +764,61 @@ def api_comparar_jugadores():
     if not j2:
         return jsonify({'error': f'Jugador "{jugador2}" no encontrado'}), 404
     
-    stats = ['goals', 'assists', 'rating', 'totalShots', 'shotsOnTarget', 
-             'keyPasses', 'successfulDribbles', 'tackles', 'interceptions',
-             'accuratePassesPercentage', 'expectedGoals', 'expectedAssists']
-    
+    stats = ['goals', 'assists', 'rating', 'totalShots', 'shotsOnTarget', 'keyPasses']
     comparacion = []
     for stat in stats:
         val1 = j1.get(stat, 0)
         val2 = j2.get(stat, 0)
-        comparacion.append({
-            'stat': stat,
-            'nombre': stat.replace('_', ' ').title(),
-            'valor1': val1,
-            'valor2': val2,
-            'ganador': 1 if val1 > val2 else (2 if val2 > val1 else 0)
-        })
+        comparacion.append({'stat': stat, 'nombre': stat.replace('_', ' ').title(), 'valor1': val1, 'valor2': val2})
     
     return jsonify({
         'jugador1': {'nombre': j1['player'], 'equipo': j1['team'], 'liga': j1['league']},
         'jugador2': {'nombre': j2['player'], 'equipo': j2['team'], 'liga': j2['league']},
         'comparacion': comparacion
     })
+
+@app.route('/api/odds')
+def api_odds():
+    """Endpoint para obtener cuotas en tiempo real"""
+    data = obtener_cuotas()
+    
+    if data:
+        partidos = []
+        for partido in data:
+            cuotas = {'home': 0, 'draw': 0, 'away': 0}
+            mejores_casas = {'home': '', 'draw': '', 'away': ''}
+            
+            for bookmaker in partido.get('bookmakers', []):
+                for market in bookmaker.get('markets', []):
+                    if market.get('key') == 'h2h':
+                        for outcome in market.get('outcomes', []):
+                            nombre = outcome.get('name', '')
+                            precio = outcome.get('price', 0)
+                            
+                            if nombre == partido.get('home_team'):
+                                if precio > cuotas['home']:
+                                    cuotas['home'] = precio
+                                    mejores_casas['home'] = bookmaker.get('title', '')
+                            elif nombre == 'Draw':
+                                if precio > cuotas['draw']:
+                                    cuotas['draw'] = precio
+                                    mejores_casas['draw'] = bookmaker.get('title', '')
+                            else:
+                                if precio > cuotas['away']:
+                                    cuotas['away'] = precio
+                                    mejores_casas['away'] = bookmaker.get('title', '')
+            
+            partidos.append({
+                'home_team': partido.get('home_team'),
+                'away_team': partido.get('away_team'),
+                'commence_time': partido.get('commence_time'),
+                'cuotas': cuotas,
+                'mejores_casas': mejores_casas
+            })
+        
+        return jsonify({'success': True, 'games': partidos, 'count': len(partidos)})
+    
+    return jsonify({'success': False, 'error': 'No se pudieron obtener las cuotas'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
