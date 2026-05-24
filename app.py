@@ -134,8 +134,6 @@ ELIMINATORIAS = {
 
 ODDS_API_KEY = "1928777e3a71509cabffaf3c507876ce"
 
-
-
 # ==================== RESULTADOS DE ELIMINATORIAS ====================
 
 PARTIDOS_ELIMINATORIAS = {
