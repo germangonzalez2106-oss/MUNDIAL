@@ -16,115 +16,154 @@ except Exception as e:
     print(f"❌ Error: {e}")
     coleccion = None
 
-# ==================== DATOS ====================
-# ==================== ELIMINATORIAS POR CONTINENTE ====================
-
-ELIMINATORIAS = {
-    "Sudamérica": {
-        "clasificados": ["Argentina", "Ecuador", "Uruguay", "Colombia", "Brasil", "Paraguay"],
-        "repechaje": ["Bolivia"],
-        "eliminados": ["Venezuela", "Perú", "Chile"],
-        "max_goleador": {"jugador": "Lionel Messi", "goles": 8},
-        "fecha_final": "2025-09-10"
-    },
-    "Europa": {
-        "clasificados_directos": ["España", "Francia", "Alemania", "Inglaterra", "Países Bajos", 
-                                  "Croacia", "Portugal", "Escocia", "Austria", "Bélgica", 
-                                  "Suiza", "Noruega"],
-        "clasificados_repechaje": ["Bosnia", "República Checa", "Suecia", "Turquía"],
-        "finales_repechaje": [
-            {"partido": "Bosnia vs Italia", "resultado": "1-1 (4-1 pen)", "ganador": "Bosnia"},
-            {"partido": "Suecia vs Polonia", "resultado": "3-2", "ganador": "Suecia"},
-            {"partido": "Kosovo vs Turquía", "resultado": "0-1", "ganador": "Turquía"},
-            {"partido": "Dinamarca vs Rep. Checa", "resultado": "2-2 (1-3 pen)", "ganador": "República Checa"}
-        ],
-        "fecha_final": "2026-03-31"
-    },
-    "África": {
-        "clasificados_confirmados": ["Sudáfrica", "Egipto", "Marruecos", "Argelia", "Costa de Marfil", "Ghana"],
-        "grupos": {
-            "Grupo C": {"primero": "Sudáfrica", "puntos": 18, "segundo": "Nigeria", "tercero": "Benín"},
-            "Grupo 1": {"primero": "Egipto", "puntos": 13},
-            "Grupo 4": {"primero": "Marruecos", "puntos": 12},
-            "Grupo 7": {"primero": "Argelia", "puntos": 12},
-            "Grupo 6": {"primero": "Costa de Marfil"},
-            "Grupo 9": {"primero": "Ghana"}
-        },
-        "fecha_final": "2025-10-14"
-    },
-    "Asia": {
-        "clasificados": ["Corea del Sur", "Japón", "Irán", "Australia", "Arabia Saudita", "Uzbekistán", "Qatar", "Jordania"],
-        "grupo_c": {
-            "primero": "Corea del Sur",
-            "puntos": 16,
-            "record": "20 goles a favor, 1 en contra"
-        },
-        "resultados_destacados": [
-            {"partido": "Australia vs China", "resultado": "3-1"},
-            {"partido": "Corea del Sur vs China", "resultado": "3-0"},
-            {"partido": "Corea del Sur vs Tailandia", "resultado": "1-1"}
-        ]
-    },
-    "Norteamérica": {
-        "clasificados": ["México", "Canadá", "Estados Unidos", "Panamá"],
-        "grupo_c": {
-            "segundo": "Honduras",
-            "tercero": "Costa Rica",
-            "resultado_final": "Costa Rica 0-0 Honduras"
-        },
-        "fecha_final": "2025-11-18"
-    }
-}
-
-def obtener_resumen_eliminatorias(continente=None):
-    """Obtiene resumen de eliminatorias por continente"""
-    if continente:
-        return ELIMINATORIAS.get(continente, {})
-    return ELIMINATORIAS
-
-
-
+# ==================== JUGADORES MANUALES ====================
 JUGADORES_MANUALES = {
     "messi": {"player": "Lionel Messi", "team": "Inter Miami", "league": "MLS", "goals": 12, "assists": 8, "rating": 8.2},
     "cristiano ronaldo": {"player": "Cristiano Ronaldo", "team": "Al Nassr", "league": "Saudi Pro League", "goals": 28, "assists": 6, "rating": 7.9}
 }
 
-HISTORIAL = {
-    
-    ("Argentina", "Brasil"): [{"fecha": "2025-11-21", "competicion": "Eliminatorias", "resultado": "Argentina 2-1 Brasil"}],
-    ("Argentina", "Francia"): [{"fecha": "2022-12-18", "competicion": "Mundial Final", "resultado": "Argentina 3-3 Francia (4-2 pen)"}],
-    ("Argentina", "Alemania"): [{"fecha": "2014-07-13", "competicion": "Mundial Final", "resultado": "Alemania 1-0 Argentina"}],
-    ("Brasil", "Alemania"): [{"fecha": "2014-07-08", "competicion": "Mundial Semifinal", "resultado": "Brasil 1-7 Alemania"}],
-    ("Inglaterra", "Francia"): [{"fecha": "2022-12-10", "competicion": "Mundial", "resultado": "Francia 2-1 Inglaterra"}],
-    ("Portugal", "España"): [{"fecha": "2018-06-15", "competicion": "Mundial", "resultado": "Portugal 3-3 España"}],
-    ("Inglaterra", "Alemania"): [{"fecha": "2021-06-29", "competicion": "Eurocopa", "resultado": "Inglaterra 2-0 Alemania"}],
+# ==================== ELIMINATORIAS Y HISTORIAL ====================
 
+# Enfrentamientos directos entre selecciones
+HISTORIAL_ENFRENTAMIENTOS = {
+    ("Argentina", "Brasil"): [
+        {"fecha": "2025-11-21", "competicion": "Eliminatorias Sudamericanas", "resultado": "Argentina 2-1 Brasil"},
+        {"fecha": "2024-07-10", "competicion": "Copa América", "resultado": "Argentina 1-0 Brasil"},
+        {"fecha": "2023-11-16", "competicion": "Eliminatorias", "resultado": "Argentina 0-1 Brasil"},
+        {"fecha": "2022-07-02", "competicion": "Copa América", "resultado": "Brasil 2-0 Argentina"},
+    ],
+    ("Argentina", "Uruguay"): [
+        {"fecha": "2025-10-10", "competicion": "Eliminatorias", "resultado": "Argentina 3-0 Uruguay"},
+        {"fecha": "2024-11-15", "competicion": "Eliminatorias", "resultado": "Uruguay 1-1 Argentina"},
+        {"fecha": "2022-03-25", "competicion": "Eliminatorias", "resultado": "Argentina 1-0 Uruguay"},
+    ],
+    ("Argentina", "Francia"): [
+        {"fecha": "2022-12-18", "competicion": "Mundial Final", "resultado": "Argentina 3-3 Francia (4-2 pen)"},
+        {"fecha": "2018-06-30", "competicion": "Mundial", "resultado": "Francia 4-3 Argentina"},
+    ],
+    ("Argentina", "Alemania"): [
+        {"fecha": "2014-07-13", "competicion": "Mundial Final", "resultado": "Alemania 1-0 Argentina"},
+        {"fecha": "2010-07-03", "competicion": "Mundial", "resultado": "Alemania 4-0 Argentina"},
+        {"fecha": "2006-06-30", "competicion": "Mundial", "resultado": "Alemania 1-1 Argentina (4-2 pen)"},
+    ],
+    ("Argentina", "Inglaterra"): [
+        {"fecha": "2005-11-12", "competicion": "Amistoso", "resultado": "Argentina 2-3 Inglaterra"},
+        {"fecha": "2002-06-07", "competicion": "Mundial", "resultado": "Argentina 0-1 Inglaterra"},
+        {"fecha": "1998-06-30", "competicion": "Mundial", "resultado": "Argentina 2-2 Inglaterra (4-3 pen)"},
+    ],
+    ("Brasil", "Alemania"): [
+        {"fecha": "2014-07-08", "competicion": "Mundial Semifinal", "resultado": "Brasil 1-7 Alemania"},
+        {"fecha": "2002-06-30", "competicion": "Mundial Final", "resultado": "Brasil 2-0 Alemania"},
+    ],
+    ("Inglaterra", "Francia"): [
+        {"fecha": "2022-12-10", "competicion": "Mundial", "resultado": "Francia 2-1 Inglaterra"},
+        {"fecha": "2017-06-13", "competicion": "Amistoso", "resultado": "Francia 3-2 Inglaterra"},
+    ],
+    ("Inglaterra", "Alemania"): [
+        {"fecha": "2021-06-29", "competicion": "Eurocopa", "resultado": "Inglaterra 2-0 Alemania"},
+        {"fecha": "2010-06-27", "competicion": "Mundial", "resultado": "Alemania 4-1 Inglaterra"},
+    ],
+    ("España", "Portugal"): [
+        {"fecha": "2018-06-15", "competicion": "Mundial", "resultado": "Portugal 3-3 España"},
+        {"fecha": "2010-06-29", "competicion": "Mundial", "resultado": "España 1-0 Portugal"},
+    ],
+    ("España", "Alemania"): [
+        {"fecha": "2010-07-07", "competicion": "Mundial", "resultado": "España 1-0 Alemania"},
+        {"fecha": "2008-06-29", "competicion": "Eurocopa", "resultado": "España 1-0 Alemania"},
+    ],
+    ("Países Bajos", "España"): [
+        {"fecha": "2010-07-11", "competicion": "Mundial Final", "resultado": "España 1-0 Países Bajos"},
+        {"fecha": "2014-06-13", "competicion": "Mundial", "resultado": "Países Bajos 5-1 España"},
+    ],
+    ("Japón", "Alemania"): [
+        {"fecha": "2022-11-23", "competicion": "Mundial", "resultado": "Japón 2-1 Alemania"},
+    ],
+    ("Corea del Sur", "Alemania"): [
+        {"fecha": "2018-06-27", "competicion": "Mundial", "resultado": "Corea del Sur 2-0 Alemania"},
+    ],
+    ("Australia", "Argentina"): [
+        {"fecha": "2022-12-03", "competicion": "Mundial", "resultado": "Argentina 2-1 Australia"},
+    ],
+    ("Estados Unidos", "Inglaterra"): [
+        {"fecha": "2022-11-25", "competicion": "Mundial", "resultado": "Inglaterra 0-0 Estados Unidos"},
+    ],
+    ("México", "Alemania"): [
+        {"fecha": "2018-06-17", "competicion": "Mundial", "resultado": "México 1-0 Alemania"},
+    ],
+}
 
-
-
+# Eliminatorias por continente
+ELIMINATORIAS = {
+    "Sudamérica": {
+        "clasificados": ["Argentina", "Ecuador", "Uruguay", "Colombia", "Brasil", "Paraguay"],
+        "repechaje": ["Bolivia"],
+        "eliminados": ["Venezuela", "Perú", "Chile"],
+        "max_goleador": "Lionel Messi (8 goles)",
+        "fecha_final": "2025-09-10",
+        "posiciones": [
+            {"pos": 1, "equipo": "Argentina", "pts": 38},
+            {"pos": 2, "equipo": "Ecuador", "pts": 29},
+            {"pos": 3, "equipo": "Colombia", "pts": 28},
+            {"pos": 4, "equipo": "Uruguay", "pts": 28},
+            {"pos": 5, "equipo": "Brasil", "pts": 28},
+            {"pos": 6, "equipo": "Paraguay", "pts": 25},
+        ]
+    },
+    "Europa": {
+        "clasificados": ["España", "Francia", "Alemania", "Inglaterra", "Países Bajos", "Croacia", 
+                        "Portugal", "Escocia", "Austria", "Bélgica", "Suiza", "Noruega"],
+        "repechaje": ["Bosnia", "República Checa", "Suecia", "Turquía"],
+        "fecha_final": "2026-03-31"
+    },
+    "África": {
+        "clasificados": ["Sudáfrica", "Egipto", "Marruecos", "Argelia", "Costa de Marfil", "Ghana"],
+        "fecha_final": "2025-10-14",
+        "destacado": "Sudáfrica vuelve a un Mundial después de 16 años (2010)"
+    },
+    "Asia": {
+        "clasificados": ["Corea del Sur", "Japón", "Irán", "Australia", "Arabia Saudita", "Uzbekistán", "Qatar", "Jordania"],
+        "fecha_final": "2025-06-11",
+        "destacado": "Corea del Sur clasificó invicta (20 goles a favor, 1 en contra)"
+    },
+    "Norteamérica": {
+        "clasificados": ["México", "Canadá", "Estados Unidos", "Panamá"],
+        "fecha_final": "2025-11-18",
+        "destacado": "Canadá y México clasificaron como anfitriones"
+    }
 }
 
 ODDS_API_KEY = "1928777e3a71509cabffaf3c507876ce"
 
-
 # ==================== FUNCIONES ====================
-def api_eliminatorias():
-    continente = request.args.get('continente', '')
-    if continente:
-        data = ELIMINATORIAS.get(continente)
-        if not data:
-            return jsonify({'error': 'Continente no encontrado'}), 404
-        return jsonify({'continente': continente, 'datos': data})
-    return jsonify(ELIMINATORIAS)
-
 def obtener_selecciones():
     if coleccion is None: return []
     return list(coleccion.find({}, {'_id': 0}))
 
 def obtener_historial(e1, e2):
-    h = HISTORIAL.get((e1, e2)) or HISTORIAL.get((e2, e1))
-    if not h: return None
-    return {"total": len(h), "partidos": h}
+    """Obtiene historial de enfrentamientos directos"""
+    h = HISTORIAL_ENFRENTAMIENTOS.get((e1, e2)) or HISTORIAL_ENFRENTAMIENTOS.get((e2, e1))
+    if not h:
+        return None
+    # Calcular goles totales
+    goles1 = 0
+    goles2 = 0
+    for p in h:
+        try:
+            resultado = p['resultado']
+            if e1 in resultado:
+                partes = resultado.split()
+                for i, part in enumerate(partes):
+                    if '-' in part and 'pen' not in part:
+                        g1, g2 = map(int, part.split('-'))
+                        if e1 == partes[i-1] or (i > 0 and e1 in partes[i-1]):
+                            goles1 += g1
+                            goles2 += g2
+                        else:
+                            goles1 += g2
+                            goles2 += g1
+        except:
+            pass
+    return {"total": len(h), "partidos": h, "goles_local": goles1, "goles_visitante": goles2}
 
 def obtener_cuotas():
     try:
@@ -210,6 +249,7 @@ HTML = """
     <div class="nav">
         <a href="/">🏆 Ranking</a>
         <a href="/jugador">🔍 Jugadores</a>
+        <a href="/eliminatorias">🌍 Eliminatorias</a>
     </div>
     
     <h1>🏆 Mundial 2026</h1>
@@ -243,7 +283,7 @@ HTML = """
     <div id="cuotasResultado" style="margin-top:15px;"></div>
     
     <!-- Historial -->
-    <h2>📜 Historial</h2>
+    <h2>📜 Historial de Enfrentamientos</h2>
     <div class="flex">
         <select id="histLocal"><option value="">Equipo</option>{% for s in selecciones %}<option>{{ s.nombre }}</option>{% endfor %}</select>
         <span>VS</span>
@@ -330,7 +370,7 @@ HTML = """
         let visitante = document.getElementById('histVisit').value;
         if (!local || !visitante) { alert("Selecciona dos equipos"); return; }
         let div = document.getElementById('historialResultado');
-        div.innerHTML = '<p>Cargando...</p>';
+        div.innerHTML = '<p>Cargando historial...</p>';
         div.style.display = 'block';
         fetch('/api/historial?eq1='+encodeURIComponent(local)+'&eq2='+encodeURIComponent(visitante))
             .then(r=>r.json())
@@ -359,11 +399,101 @@ HTML = """
 </html>
 """
 
+# ==================== PÁGINA ELIMINATORIAS ====================
+HTML_ELIMINATORIAS = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Eliminatorias - Mundial 2026</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:'Segoe UI',Arial,sans-serif;background:#1a1a2e;color:white;padding:20px;}
+        .container{max-width:1000px;margin:0 auto;}
+        h1{text-align:center;color:#4CAF50;margin-bottom:20px;}
+        h2{margin:20px 0 10px;color:#FFC107;}
+        .nav{text-align:center;margin-bottom:20px;}
+        .nav a{color:#4CAF50;text-decoration:none;margin:0 10px;padding:8px 20px;background:#0f3460;border-radius:25px;}
+        .continente{background:#0f3460;border-radius:15px;padding:20px;margin-bottom:20px;}
+        .continente h3{color:#4CAF50;margin-bottom:15px;}
+        .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:10px 0;}
+        .badge{background:#1a1a2e;padding:8px;border-radius:10px;text-align:center;}
+        .badge.green{background:#1a3a2e;border-left:3px solid #4CAF50;}
+        table{width:100%;background:#1a1a2e;border-radius:10px;border-collapse:collapse;}
+        th,td{padding:8px;text-align:left;}
+        th{color:#4CAF50;}
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="nav"><a href="/">🏆 Ranking</a><a href="/jugador">🔍 Jugadores</a><a href="/eliminatorias">🌍 Eliminatorias</a></div>
+    <h1>🌍 Eliminatorias por Continente</h1>
+    
+    <div class="continente">
+        <h3>🏆 Sudamérica (CONMEBOL)</h3>
+        <div class="grid">
+            <div class="badge green">✅ Clasificados: Argentina, Ecuador, Uruguay, Colombia, Brasil, Paraguay</div>
+            <div class="badge">🔄 Repechaje: Bolivia</div>
+            <div class="badge">❌ Eliminados: Venezuela, Perú, Chile</div>
+        </div>
+        <p><strong>⭐ Máximo goleador:</strong> Lionel Messi (8 goles)</p>
+        <p><strong>📅 Fecha final:</strong> 10 de septiembre de 2025</p>
+        <h4>Tabla de posiciones:</h4>
+        <table><th>Pos</th><th>Equipo</th><th>Pts</th></tr>
+        <tr><td>1</td><td>Argentina</td><td>38</td></tr>
+        <tr><td>2</td><td>Ecuador</td><td>29</td></tr>
+        <tr><td>3</td><td>Colombia</td><td>28</td></tr>
+        <tr><td>4</td><td>Uruguay</td><td>28</td></tr>
+        <tr><td>5</td><td>Brasil</td><td>28</td></tr>
+        <tr><td>6</td><td>Paraguay</td><td>25</td></tr>
+        </table>
+    </div>
+    
+    <div class="continente">
+        <h3>⚽ Europa (UEFA)</h3>
+        <div class="grid">
+            <div class="badge green">✅ Clasificados directos: España, Francia, Alemania, Inglaterra, Países Bajos, Croacia, Portugal, Escocia, Austria, Bélgica, Suiza, Noruega</div>
+            <div class="badge">🔄 Repechaje: Bosnia, República Checa, Suecia, Turquía</div>
+        </div>
+        <p><strong>📅 Fecha final:</strong> 31 de marzo de 2026</p>
+    </div>
+    
+    <div class="continente">
+        <h3>🦁 África (CAF)</h3>
+        <div class="grid">
+            <div class="badge green">✅ Clasificados: Sudáfrica, Egipto, Marruecos, Argelia, Costa de Marfil, Ghana</div>
+        </div>
+        <p><strong>📅 Fecha final:</strong> 14 de octubre de 2025</p>
+        <p><strong>🎉 Destacado:</strong> Sudáfrica vuelve a un Mundial después de 16 años</p>
+    </div>
+    
+    <div class="continente">
+        <h3>🐉 Asia (AFC)</h3>
+        <div class="grid">
+            <div class="badge green">✅ Clasificados: Corea del Sur, Japón, Irán, Australia, Arabia Saudita, Uzbekistán, Qatar, Jordania</div>
+        </div>
+        <p><strong>🎉 Destacado:</strong> Corea del Sur clasificó invicta (20 goles a favor, 1 en contra)</p>
+    </div>
+    
+    <div class="continente">
+        <h3>🌎 Norteamérica (CONCACAF)</h3>
+        <div class="grid">
+            <div class="badge green">✅ Clasificados: México, Canadá, Estados Unidos, Panamá</div>
+        </div>
+        <p><strong>📅 Fecha final:</strong> 18 de noviembre de 2025</p>
+        <p><strong>🎉 Destacado:</strong> Canadá y México clasificaron como anfitriones</p>
+    </div>
+</div>
+</body>
+</html>
+"""
+
 # ==================== PÁGINA JUGADORES ====================
 HTML_JUGADOR = """
 <!DOCTYPE html>
 <html>
-<head><title>Buscador de Jugadores</title><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<head><title>Buscador de Jugadores</title><meta charset="UTF-8">
 <style>
     *{margin:0;padding:0;box-sizing:border-box;}
     body{font-family:'Segoe UI',Arial,sans-serif;background:#1a1a2e;color:white;padding:20px;}
@@ -379,12 +509,11 @@ HTML_JUGADOR = """
     .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:15px 0;}
     .card{background:#1a1a2e;padding:15px;border-radius:10px;text-align:center;}
     .card h3{font-size:2em;color:#4CAF50;}
-    .close{background:#f44336;padding:5px 15px;font-size:12px;margin-bottom:15px;}
 </style>
 </head>
 <body>
 <div class="container">
-    <div class="nav"><a href="/">🏆 Ranking</a><a href="/jugador">🔍 Jugadores</a></div>
+    <div class="nav"><a href="/">🏆 Ranking</a><a href="/jugador">🔍 Jugadores</a><a href="/eliminatorias">🌍 Eliminatorias</a></div>
     <h1>🔍 Buscador de Jugadores</h1>
     <div class="flex"><input type="text" id="searchInput" placeholder="Ej: Messi, Ronaldo..."><button onclick="buscar()">Buscar</button></div>
     <div id="resultado" class="results"></div>
@@ -397,8 +526,7 @@ HTML_JUGADOR = """
             let div=document.getElementById('resultado');
             if(data.error){div.innerHTML='<p>❌ '+data.error+'</p>';}
             else{
-                let html='<button class="close" onclick="cerrar()">Cerrar</button><h3>'+data.player+'</h3>';
-                html+='<div class="grid"><div class="card"><h3>'+data.goals+'</h3><p>Goles</p></div>';
+                let html='<h3>'+data.player+'</h3><div class="grid"><div class="card"><h3>'+data.goals+'</h3><p>Goles</p></div>';
                 html+='<div class="card"><h3>'+data.assists+'</h3><p>Asistencias</p></div>';
                 html+='<div class="card"><h3>'+data.rating+'</h3><p>Rating</p></div></div>';
                 html+='<p><strong>Equipo:</strong> '+data.team+' ('+data.league+')</p>';
@@ -407,7 +535,6 @@ HTML_JUGADOR = """
             div.style.display='block';
         });
     }
-    function cerrar(){document.getElementById('resultado').style.display='none';}
 </script>
 </body>
 </html>
@@ -423,6 +550,10 @@ def index():
 @app.route('/jugador')
 def jugador():
     return render_template_string(HTML_JUGADOR)
+
+@app.route('/eliminatorias')
+def eliminatorias():
+    return render_template_string(HTML_ELIMINATORIAS)
 
 @app.route('/api/selecciones')
 def api_selecciones():
@@ -460,10 +591,8 @@ def api_historial():
     e1, e2 = request.args.get('eq1', ''), request.args.get('eq2', '')
     h = obtener_historial(e1, e2)
     if h:
-        g1 = sum(int(p['resultado'].split('-')[0].split()[-1]) for p in h['partidos'] if p['resultado'].split('-')[0].strip().split()[-1].isdigit())
-        g2 = sum(int(p['resultado'].split('-')[1].split()[0]) for p in h['partidos'] if p['resultado'].split('-')[1].strip().split()[0].isdigit())
-        return jsonify({'total': h['total'], 'partidos': h['partidos'], 'goles_local': g1, 'goles_visitante': g2})
-    return jsonify({'error': 'No hay historial'}), 404
+        return jsonify(h)
+    return jsonify({'error': 'No hay historial de enfrentamientos entre estos equipos'}), 404
 
 @app.route('/api/jugador/buscar')
 def api_buscar_jugador():
