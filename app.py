@@ -65,7 +65,6 @@ def index():
             }
             .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
             
-            /* Header */
             .header {
                 text-align: center;
                 padding: 30px 20px;
@@ -83,7 +82,6 @@ def index():
             }
             .header p { color: #aaa; font-size: 1.1em; }
             
-            /* Stats Cards */
             .stats-cards {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -102,7 +100,6 @@ def index():
             .stat-card h3 { font-size: 2.5em; color: #4CAF50; }
             .stat-card p { color: #aaa; margin-top: 5px; }
             
-            /* Gráficos */
             .charts {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
@@ -117,7 +114,6 @@ def index():
             .chart-card h3 { margin-bottom: 15px; color: #4CAF50; }
             canvas { max-height: 300px; }
             
-            /* Buscador */
             .search-section {
                 background: rgba(255,255,255,0.05);
                 border-radius: 15px;
@@ -151,7 +147,6 @@ def index():
             }
             .search-box button:hover { background: #45a049; }
             
-            /* Resultados búsqueda */
             .results {
                 margin-top: 20px;
                 background: rgba(0,0,0,0.3);
@@ -172,7 +167,6 @@ def index():
             .results th { background: #4CAF50; border-radius: 10px; }
             .results tr:hover { background: rgba(255,255,255,0.05); }
             
-            /* Comparador */
             .compare-section {
                 background: rgba(255,255,255,0.05);
                 border-radius: 15px;
@@ -205,7 +199,6 @@ def index():
             }
             .compare-selects button:hover { background: #1976D2; }
             
-            /* Tabla ranking */
             .ranking-section {
                 background: rgba(255,255,255,0.05);
                 border-radius: 15px;
@@ -222,17 +215,20 @@ def index():
                 text-align: left;
                 border-bottom: 1px solid rgba(255,255,255,0.1);
             }
-            .ranking-table th {
-                background: #4CAF50;
-                position: sticky;
-                top: 0;
-            }
+            .ranking-table th { background: #4CAF50; position: sticky; top: 0; }
             .ranking-table tr:hover { background: rgba(255,255,255,0.05); }
+            .ranking-table button {
+                background: #4CAF50;
+                border: none;
+                padding: 5px 15px;
+                border-radius: 20px;
+                cursor: pointer;
+                color: white;
+            }
             .rating-high { color: #4CAF50; font-weight: bold; }
             .rating-mid { color: #FFC107; font-weight: bold; }
             .rating-low { color: #f44336; }
             
-            /* Modal */
             .modal {
                 display: none;
                 position: fixed;
@@ -262,6 +258,9 @@ def index():
                 color: #aaa;
             }
             .modal-content .close:hover { color: white; }
+            .modal-content table { width: 100%; border-collapse: collapse; }
+            .modal-content th, .modal-content td { padding: 8px; text-align: left; border-bottom: 1px solid #333; }
+            .modal-content th { background: #4CAF50; }
             
             @media (max-width: 768px) {
                 .container { padding: 10px; }
@@ -310,7 +309,7 @@ def index():
                         html += `<div style="background:#0f3460;padding:15px;border-radius:10px;"><h3>${data.goles_total}</h3><p>Goles</p></div>`;
                         html += `<div style="background:#0f3460;padding:15px;border-radius:10px;"><h3>${data.asistencias_total}</h3><p>Asistencias</p></div>`;
                         html += `<div style="background:#0f3460;padding:15px;border-radius:10px;"><h3>${data.rating_promedio}</h3><p>Rating</p></div></div>`;
-                        html += '<h3>📋 Plantilla</h3><table style="width:100%"><thead><tr><th>Jugador</th><th>Goles</th><th>Asistencias</th><th>Rating</th></tr></thead><tbody>';
+                        html += '<h3>📋 Plantilla</h3><table><thead><tr><th>Jugador</th><th>Goles</th><th>Asistencias</th><th>Rating</th></tr></thead><tbody>';
                         for (let j of data.plantilla) {
                             html += `<tr><td>${j.jugador}</td><td>${j.goles}</td><td>${j.asistencias}</td><td>${j.rating}</td></tr>`;
                         }
@@ -329,16 +328,22 @@ def index():
                 fetch(`/api/comparar?eq1=${encodeURIComponent(eq1)}&eq2=${encodeURIComponent(eq2)}`)
                     .then(r => r.json())
                     .then(data => {
+                        let winner1 = data.equipo1.rating_promedio > data.equipo2.rating_promedio ? 'ganador' : '';
+                        let winner2 = data.equipo2.rating_promedio > data.equipo1.rating_promedio ? 'ganador' : '';
                         let html = '<h3>⚔️ Comparación</h3><div style="display:grid;grid-template-columns:1fr auto 1fr;gap:20px;margin-top:20px;">';
                         html += `<div style="background:#1a1a2e;padding:15px;border-radius:10px;"><h4 style="color:#4CAF50;text-align:center">${data.equipo1.nombre}</h4>`;
-                        html += `<div style="display:flex;justify-content:space-between;padding:8px 0"><span>🏆 Rating</span><span>${data.equipo1.rating_promedio}</span></div>`;
+                        html += `<div style="display:flex;justify-content:space-between;padding:8px 0"><span>🏆 Rating</span><span class="${winner1}">${data.equipo1.rating_promedio}</span></div>`;
                         html += `<div style="display:flex;justify-content:space-between;padding:8px 0"><span>⚽ Goles</span><span>${data.equipo1.goles_total}</span></div>`;
-                        html += `<div style="display:flex;justify-content:space-between;padding:8px 0"><span>⭐ Mejor</span><span>${data.equipo1.mejor_rating.nombre} (${data.equipo1.mejor_rating.valor})</span></div></div>`;
-                        html += '<div style="font-size:24px;display:flex;align-items:center;color:#FFC107">VS</div>';
+                        html += `<div style="display:flex;justify-content:space-between;padding:8px 0"><span>🎯 Asistencias</span><span>${data.equipo1.asistencias_total}</span></div>`;
+                        html += `<div style="display:flex;justify-content:space-between;padding:8px 0"><span>⭐ Mejor Rating</span><span>${data.equipo1.mejor_rating.nombre} (${data.equipo1.mejor_rating.valor})</span></div>`;
+                        html += `<div style="display:flex;justify-content:space-between;padding:8px 0"><span>⚽ Máximo Goleador</span><span>${data.equipo1.max_goleador.nombre} (${data.equipo1.max_goleador.goles})</span></div></div>`;
+                        html += '<div style="font-size:24px;display:flex;align-items:center;justify-content:center;color:#FFC107">VS</div>';
                         html += `<div style="background:#1a1a2e;padding:15px;border-radius:10px;"><h4 style="color:#4CAF50;text-align:center">${data.equipo2.nombre}</h4>`;
-                        html += `<div style="display:flex;justify-content:space-between;padding:8px 0"><span>🏆 Rating</span><span>${data.equipo2.rating_promedio}</span></div>`;
+                        html += `<div style="display:flex;justify-content:space-between;padding:8px 0"><span>🏆 Rating</span><span class="${winner2}">${data.equipo2.rating_promedio}</span></div>`;
                         html += `<div style="display:flex;justify-content:space-between;padding:8px 0"><span>⚽ Goles</span><span>${data.equipo2.goles_total}</span></div>`;
-                        html += `<div style="display:flex;justify-content:space-between;padding:8px 0"><span>⭐ Mejor</span><span>${data.equipo2.mejor_rating.nombre} (${data.equipo2.mejor_rating.valor})</span></div></div>`;
+                        html += `<div style="display:flex;justify-content:space-between;padding:8px 0"><span>🎯 Asistencias</span><span>${data.equipo2.asistencias_total}</span></div>`;
+                        html += `<div style="display:flex;justify-content:space-between;padding:8px 0"><span>⭐ Mejor Rating</span><span>${data.equipo2.mejor_rating.nombre} (${data.equipo2.mejor_rating.valor})</span></div>`;
+                        html += `<div style="display:flex;justify-content:space-between;padding:8px 0"><span>⚽ Máximo Goleador</span><span>${data.equipo2.max_goleador.nombre} (${data.equipo2.max_goleador.goles})</span></div></div>`;
                         html += '</div>';
                         document.getElementById('comparacion-resultado').innerHTML = html;
                         document.getElementById('comparacion-container').style.display = 'block';
@@ -425,7 +430,9 @@ def index():
             <div class="ranking-section">
                 <h3>📊 Ranking de Selecciones</h3>
                 <table class="ranking-table">
-                    <thead><tr><th>#</th><th>Selección</th><th>Jugadores</th><th>Goles</th><th>Rating</th><th>Acción</th></tr></thead>
+                    <thead>
+                        <tr><th>#</th><th>Selección</th><th>Jugadores</th><th>Goles</th><th>Rating</th><th>Acción</th></tr>
+                    </thead>
                     <tbody>
     """
     
@@ -438,7 +445,7 @@ def index():
                             <td>{s['jugadores']}</td>
                             <td>{s['goles_total']}</td>
                             <td class="{rating_class}">{s['rating_promedio']}</td>
-                            <td><button onclick="verSeleccion('{s['nombre']}')" style="background:#4CAF50;border:none;padding:5px 15px;border-radius:20px;cursor:pointer;">Ver</button></td>
+                            <td><button onclick="verSeleccion('{s['nombre']}')">Ver</button></td>
                         </tr>
         """
     
@@ -475,6 +482,7 @@ def api_seleccion(nombre):
     if not sel:
         return jsonify({'error': 'No encontrada'}), 404
     mejor_rating = max(sel['plantilla'], key=lambda x: x['rating'])
+    max_goleador = max(sel['plantilla'], key=lambda x: x['goles'])
     return jsonify({
         'nombre': sel['nombre'],
         'jugadores': sel['jugadores'],
@@ -483,7 +491,9 @@ def api_seleccion(nombre):
         'rating_promedio': sel['rating_promedio'],
         'plantilla': sel['plantilla'],
         'mejor_jugador': mejor_rating['jugador'],
-        'mejor_rating': mejor_rating['rating']
+        'mejor_rating': mejor_rating['rating'],
+        'max_goleador': max_goleador['jugador'],
+        'max_goles': max_goleador['goles']
     })
 
 @app.route('/api/buscar')
@@ -501,9 +511,27 @@ def api_comparar():
         return jsonify({'error': 'Equipo no encontrado'}), 404
     mejor1 = max(d1['plantilla'], key=lambda x: x['rating'])
     mejor2 = max(d2['plantilla'], key=lambda x: x['rating'])
+    max_gol1 = max(d1['plantilla'], key=lambda x: x['goles'])
+    max_gol2 = max(d2['plantilla'], key=lambda x: x['goles'])
     return jsonify({
-        'equipo1': {'nombre': d1['nombre'], 'jugadores': d1['jugadores'], 'goles_total': d1['goles_total'], 'asistencias_total': d1['asistencias_total'], 'rating_promedio': d1['rating_promedio'], 'mejor_rating': {'nombre': mejor1['jugador'], 'valor': mejor1['rating']}},
-        'equipo2': {'nombre': d2['nombre'], 'jugadores': d2['jugadores'], 'goles_total': d2['goles_total'], 'asistencias_total': d2['asistencias_total'], 'rating_promedio': d2['rating_promedio'], 'mejor_rating': {'nombre': mejor2['jugador'], 'valor': mejor2['rating']}}
+        'equipo1': {
+            'nombre': d1['nombre'],
+            'jugadores': d1['jugadores'],
+            'goles_total': d1['goles_total'],
+            'asistencias_total': d1['asistencias_total'],
+            'rating_promedio': d1['rating_promedio'],
+            'mejor_rating': {'nombre': mejor1['jugador'], 'valor': mejor1['rating']},
+            'max_goleador': {'nombre': max_gol1['jugador'], 'goles': max_gol1['goles']}
+        },
+        'equipo2': {
+            'nombre': d2['nombre'],
+            'jugadores': d2['jugadores'],
+            'goles_total': d2['goles_total'],
+            'asistencias_total': d2['asistencias_total'],
+            'rating_promedio': d2['rating_promedio'],
+            'mejor_rating': {'nombre': mejor2['jugador'], 'valor': mejor2['rating']},
+            'max_goleador': {'nombre': max_gol2['jugador'], 'goles': max_gol2['goles']}
+        }
     })
 
 if __name__ == '__main__':
