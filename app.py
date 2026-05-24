@@ -38,11 +38,53 @@ def buscar_jugadores(termino):
                 })
     return resultados
 
+def calcular_pronosticos(selecciones):
+    """Calcula probabilidades para cada selección"""
+    pronosticos = []
+    
+    for sel in selecciones:
+        # Calcular fuerza del equipo (0-100)
+        # Basado en rating promedio, goles totales y mejor jugador
+        rating_peso = sel.get('rating_promedio', 0) * 10  # 6.5 -> 65
+        goles_peso = min(sel.get('goles_total', 0) / 100, 30)  # Máximo 30 puntos
+        mejor_jugador = sel.get('mejor_rating', 0) * 8 if 'mejor_rating' in sel else 0
+        
+        # Buscar mejor jugador real
+        if 'plantilla' in sel and sel['plantilla']:
+            mejor_rating_valor = max(jug.get('rating', 0) for jug in sel['plantilla'])
+            mejor_jugador = mejor_rating_valor * 8
+        
+        fuerza = rating_peso + goles_peso + mejor_jugador
+        fuerza = min(fuerza, 98)  # Máximo 98%
+        
+        # Probabilidades por fase (simplificadas)
+        prob_octavos = fuerza / 100
+        prob_cuartos = (fuerza / 100) * 0.85
+        prob_semis = (fuerza / 100) * 0.65
+        prob_final = (fuerza / 100) * 0.45
+        prob_campeon = (fuerza / 100) * 0.25
+        
+        pronosticos.append({
+            'nombre': sel['nombre'],
+            'fuerza': round(fuerza, 1),
+            'rating_promedio': sel.get('rating_promedio', 0),
+            'goles_total': sel.get('goles_total', 0),
+            'mejor_rating': mejor_rating_valor if 'plantilla' in sel and sel['plantilla'] else 0,
+            'prob_octavos': round(prob_octavos * 100, 1),
+            'prob_cuartos': round(prob_cuartos * 100, 1),
+            'prob_semis': round(prob_semis * 100, 1),
+            'prob_final': round(prob_final * 100, 1),
+            'prob_campeon': round(prob_campeon * 100, 1)
+        })
+    
+    # Ordenar por probabilidad de campeón
+    return sorted(pronosticos, key=lambda x: x['prob_campeon'], reverse=True)
+
 HTML = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mundial 2026 - Estadísticas</title>
+    <title>Mundial 2026 - Estadísticas y Pronósticos</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -59,7 +101,7 @@ HTML = """
         h1 { text-align: center; color: #4CAF50; margin-bottom: 10px; font-size: 2.5em; }
         .subtitle { text-align: center; color: #aaa; margin-bottom: 30px; }
         
-        /* Tarjetas de estadísticas */
+        /* Tarjetas */
         .stats-cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -78,6 +120,62 @@ HTML = """
         .stat-card h3 { font-size: 2.5em; color: #4CAF50; }
         .stat-card p { color: #aaa; margin-top: 5px; }
         
+        /* Sección pronósticos */
+        .pronosticos-section {
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .pronosticos-section h2 {
+            color: #FF9800;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .top-campeones {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .campeon-card {
+            background: linear-gradient(135deg, #1f3a5f, #0f3460);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #FF9800;
+        }
+        .campeon-card h3 { color: #FF9800; font-size: 1.5em; margin-bottom: 10px; }
+        .campeon-card .porcentaje { font-size: 2.5em; color: #4CAF50; font-weight: bold; }
+        .campeon-card .fuerza { font-size: 1.2em; color: #aaa; margin-top: 10px; }
+        
+        .pronosticos-tabla {
+            overflow-x: auto;
+        }
+        .pronosticos-tabla table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .pronosticos-tabla th, .pronosticos-tabla td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .pronosticos-tabla th {
+            background: #4CAF50;
+        }
+        .barra-progreso {
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            height: 8px;
+            overflow: hidden;
+        }
+        .barra-fill {
+            background: #4CAF50;
+            height: 100%;
+            border-radius: 10px;
+        }
+        
         /* Gráficos */
         .charts-section {
             display: grid;
@@ -93,7 +191,7 @@ HTML = """
         .chart-card h3 { margin-bottom: 15px; color: #4CAF50; text-align: center; }
         canvas { max-height: 300px; width: 100% !important; }
         
-        /* Buscador */
+        /* Buscador y comparador */
         .search-section, .compare-section, .ranking-section {
             background: rgba(0,0,0,0.3);
             border-radius: 15px;
@@ -123,10 +221,8 @@ HTML = """
             border-radius: 25px;
             color: white;
             cursor: pointer;
-            transition: background 0.3s;
         }
         .compare-btn { background: #2196F3; }
-        .search-box button:hover, .compare-btn:hover { opacity: 0.8; }
         
         .results {
             background: rgba(0,0,0,0.3);
@@ -173,7 +269,6 @@ HTML = """
             color: white;
         }
         .ganador { color: #4CAF50; font-weight: bold; }
-        
         .close-btn {
             background: #f44336;
             border: none;
@@ -188,20 +283,78 @@ HTML = """
             .charts-section { grid-template-columns: 1fr; }
             h1 { font-size: 1.8em; }
             .container { padding: 10px; }
+            .top-campeones { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
 <div class="container">
     <h1>🏆 Mundial 2026</h1>
-    <div class="subtitle">Análisis estadístico de las 25 selecciones clasificadas</div>
+    <div class="subtitle">Análisis estadístico y pronósticos de las 25 selecciones clasificadas</div>
     
     <!-- Tarjetas -->
     <div class="stats-cards">
         <div class="stat-card"><h3>{{ total_selecciones }}</h3><p>Selecciones</p></div>
         <div class="stat-card"><h3>{{ total_jugadores }}</h3><p>Jugadores</p></div>
-        <div class="stat-card"><h3>📊</h3><p>Estadísticas</p></div>
+        <div class="stat-card"><h3>🔮</h3><p>Pronósticos</p></div>
         <div class="stat-card"><h3>☁️</h3><p>MongoDB Atlas</p></div>
+    </div>
+    
+    <!-- SECCIÓN PRONÓSTICOS -->
+    <div class="pronosticos-section">
+        <h2>🔮 PRONÓSTICOS MUNDIAL 2026</h2>
+        
+        <!-- Top 5 campeones -->
+        <div class="top-campeones">
+            {% for p in pronosticos[:5] %}
+            <div class="campeon-card">
+                <h3>{{ p.nombre }}</h3>
+                <div class="porcentaje">{{ p.prob_campeon }}%</div>
+                <div class="fuerza">Fuerza: {{ p.fuerza }}%</div>
+                <div style="margin-top: 10px; font-size: 12px;">Rating: {{ p.rating_promedio }} | Goles: {{ p.goles_total }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Tabla de pronósticos completa -->
+        <div class="pronosticos-tabla">
+            <h3>📊 Pronósticos detallados</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Selección</th>
+                        <th>Fuerza</th>
+                        <th>Rating</th>
+                        <th>Goles</th>
+                        <th>Octavos</th>
+                        <th>Cuartos</th>
+                        <th>Semis</th>
+                        <th>Final</th>
+                        <th>🏆 Campeón</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in pronosticos %}
+                    <tr>
+                        <td><strong>{{ p.nombre }}</strong></td>
+                        <td>
+                            <div class="barra-progreso">
+                                <div class="barra-fill" style="width: {{ p.fuerza }}%"></div>
+                            </div>
+                            {{ p.fuerza }}%
+                        </td>
+                        <td>{{ p.rating_promedio }}</td>
+                        <td>{{ p.goles_total }}</td>
+                        <td>{{ p.prob_octavos }}%</td>
+                        <td>{{ p.prob_cuartos }}%</td>
+                        <td>{{ p.prob_semis }}%</td>
+                        <td>{{ p.prob_final }}%</td>
+                        <td><strong style="color:#4CAF50">{{ p.prob_campeon }}%</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
     
     <!-- Gráficos -->
@@ -277,7 +430,6 @@ HTML = """
         fetch('/api/selecciones')
             .then(response => response.json())
             .then(data => {
-                // Top 10 por rating
                 let topRating = [...data].sort((a,b) => b.rating_promedio - a.rating_promedio).slice(0, 10);
                 let ctxRating = document.getElementById('ratingChart').getContext('2d');
                 if (ratingChart) ratingChart.destroy();
@@ -289,26 +441,12 @@ HTML = """
                             label: 'Rating Promedio',
                             data: topRating.map(t => t.rating_promedio),
                             backgroundColor: 'rgba(76, 175, 80, 0.7)',
-                            borderColor: 'rgba(76, 175, 80, 1)',
-                            borderWidth: 1,
                             borderRadius: 10
                         }]
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        plugins: {
-                            legend: { labels: { color: 'white' } },
-                            tooltip: { callbacks: { label: function(ctx) { return ctx.raw.toFixed(2); } } }
-                        },
-                        scales: {
-                            y: { ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.1)' } },
-                            x: { ticks: { color: 'white', rotation: 45, font: { size: 10 } }, grid: { display: false } }
-                        }
-                    }
+                    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: 'white' } } }, scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white', rotation: 45 } } } }
                 });
                 
-                // Top 10 por goles
                 let topGoles = [...data].sort((a,b) => b.goles_total - a.goles_total).slice(0, 10);
                 let ctxGoles = document.getElementById('golesChart').getContext('2d');
                 if (golesChart) golesChart.destroy();
@@ -320,23 +458,10 @@ HTML = """
                             label: 'Goles Totales',
                             data: topGoles.map(t => t.goles_total),
                             backgroundColor: 'rgba(33, 150, 243, 0.7)',
-                            borderColor: 'rgba(33, 150, 243, 1)',
-                            borderWidth: 1,
                             borderRadius: 10
                         }]
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        plugins: {
-                            legend: { labels: { color: 'white' } },
-                            tooltip: { callbacks: { label: function(ctx) { return ctx.raw.toFixed(0); } } }
-                        },
-                        scales: {
-                            y: { ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.1)' } },
-                            x: { ticks: { color: 'white', rotation: 45, font: { size: 10 } }, grid: { display: false } }
-                        }
-                    }
+                    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: 'white' } } }, scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white', rotation: 45 } } } }
                 });
             });
     }
@@ -344,7 +469,6 @@ HTML = """
     function buscarJugador() {
         let termino = document.getElementById('searchInput').value;
         if (termino.length < 2) { alert("Mínimo 2 caracteres"); return; }
-        
         fetch('/api/buscar?q=' + encodeURIComponent(termino))
             .then(r => r.json())
             .then(data => {
@@ -353,12 +477,11 @@ HTML = """
                     div.innerHTML = '<p>❌ No se encontraron jugadores con "' + termino + '"</p>';
                 } else {
                     let html = '<button class="close-btn" onclick="cerrarBusqueda()">Cerrar</button>';
-                    html += '<h3>✅ Resultados (' + data.length + ')</h3>';
-                    html += '<table><thead><tr><th>Jugador</th><th>Selección</th><th>Goles</th><th>Asistencias</th><th>Rating</th></tr></thead><tbody>';
+                    html += '<h3>✅ Resultados (' + data.length + ')</h3><table><thead><tr><th>Jugador</th><th>Selección</th><th>Goles</th><th>Asistencias</th><th>Rating</th></tr></thead><tbody>';
                     for (let j of data) {
                         html += '<tr><td><strong>' + j.jugador + '</strong></td><td>' + j.seleccion + '</td><td>' + j.goles + '</td><td>' + j.asistencias + '</td><td>' + j.rating + '</td></tr>';
                     }
-                    html += '</tbody></tr>';
+                    html += '</tbody></table>';
                     div.innerHTML = html;
                 }
                 div.style.display = 'block';
@@ -366,9 +489,8 @@ HTML = """
             });
     }
     
-    function cerrarBusqueda() {
-        document.getElementById('resultadosBusqueda').style.display = 'none';
-    }
+    function cerrarBusqueda() { document.getElementById('resultadosBusqueda').style.display = 'none'; }
+    function cerrarComparacion() { document.getElementById('comparacionResultado').style.display = 'none'; }
     
     function verSeleccion(nombre) {
         fetch('/api/seleccion/' + encodeURIComponent(nombre))
@@ -381,23 +503,15 @@ HTML = """
                 html += '<div style="background:#1a1a2e;padding:15px;border-radius:10px;text-align:center"><h3>' + data.goles_total + '</h3><p>Goles</p></div>';
                 html += '<div style="background:#1a1a2e;padding:15px;border-radius:10px;text-align:center"><h3>' + data.asistencias_total + '</h3><p>Asistencias</p></div>';
                 html += '<div style="background:#1a1a2e;padding:15px;border-radius:10px;text-align:center"><h3>' + data.rating_promedio + '</h3><p>Rating</p></div></div>';
-                html += '<h3>📋 Plantilla</h3>';
-                html += '<div style="overflow-x:auto;">';
-                html += '<table><thead><tr><th>Jugador</th><th>Goles</th><th>Asistencias</th><th>Rating</th></tr></thead><tbody>';
+                html += '<h3>📋 Plantilla</h3><div style="overflow-x:auto;"><table><thead><tr><th>Jugador</th><th>Goles</th><th>Asistencias</th><th>Rating</th></tr></thead><tbody>';
                 for (let j of data.plantilla) {
                     html += '<tr><td>' + j.jugador + '</td><td>' + j.goles + '</td><td>' + j.asistencias + '</td><td>' + j.rating + '</td></tr>';
                 }
                 html += '</tbody></table></div>';
-                
-                let div = document.getElementById('comparacionResultado');
-                div.innerHTML = html;
-                div.style.display = 'block';
+                document.getElementById('comparacionResultado').innerHTML = html;
+                document.getElementById('comparacionResultado').style.display = 'block';
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             });
-    }
-    
-    function cerrarComparacion() {
-        document.getElementById('comparacionResultado').style.display = 'none';
     }
     
     function comparar() {
@@ -405,45 +519,28 @@ HTML = """
         let eq2 = document.getElementById('equipo2').value;
         if (!eq1 || !eq2) { alert("Selecciona dos equipos"); return; }
         if (eq1 === eq2) { alert("Selecciona equipos diferentes"); return; }
-        
         fetch('/api/comparar?eq1=' + encodeURIComponent(eq1) + '&eq2=' + encodeURIComponent(eq2))
             .then(r => r.json())
             .then(data => {
-                let winner1 = data.equipo1.rating_promedio > data.equipo2.rating_promedio ? 'ganador' : '';
-                let winner2 = data.equipo2.rating_promedio > data.equipo1.rating_promedio ? 'ganador' : '';
                 let html = '<button class="close-btn" onclick="cerrarComparacion()">Cerrar</button>';
                 html += '<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:20px;">';
-                
-                html += '<div style="background:#1a1a2e;padding:20px;border-radius:15px;">';
-                html += '<h3 style="text-align:center;color:#4CAF50">' + data.equipo1.nombre + '</h3>';
-                html += '<div style="margin:10px 0"><strong>🏆 Rating:</strong> <span class="' + winner1 + '">' + data.equipo1.rating_promedio + '</span></div>';
+                html += '<div style="background:#1a1a2e;padding:20px;border-radius:15px;"><h3 style="text-align:center;color:#4CAF50">' + data.equipo1.nombre + '</h3>';
+                html += '<div><strong>🏆 Rating:</strong> ' + data.equipo1.rating_promedio + '</div>';
                 html += '<div><strong>⚽ Goles:</strong> ' + data.equipo1.goles_total + '</div>';
-                html += '<div><strong>🎯 Asistencias:</strong> ' + data.equipo1.asistencias_total + '</div>';
                 html += '<div><strong>⭐ Mejor:</strong> ' + data.equipo1.mejor_rating.nombre + ' (' + data.equipo1.mejor_rating.valor + ')</div>';
-                html += '<div><strong>⚽ Goleador:</strong> ' + data.equipo1.max_goleador.nombre + ' (' + data.equipo1.max_goleador.goles + ')</div>';
-                html += '</div>';
-                
+                html += '<div><strong>⚽ Goleador:</strong> ' + data.equipo1.max_goleador.nombre + ' (' + data.equipo1.max_goleador.goles + ')</div></div>';
                 html += '<div style="font-size:36px;display:flex;align-items:center;">VS</div>';
-                
-                html += '<div style="background:#1a1a2e;padding:20px;border-radius:15px;">';
-                html += '<h3 style="text-align:center;color:#4CAF50">' + data.equipo2.nombre + '</h3>';
-                html += '<div style="margin:10px 0"><strong>🏆 Rating:</strong> <span class="' + winner2 + '">' + data.equipo2.rating_promedio + '</span></div>';
+                html += '<div style="background:#1a1a2e;padding:20px;border-radius:15px;"><h3 style="text-align:center;color:#4CAF50">' + data.equipo2.nombre + '</h3>';
+                html += '<div><strong>🏆 Rating:</strong> ' + data.equipo2.rating_promedio + '</div>';
                 html += '<div><strong>⚽ Goles:</strong> ' + data.equipo2.goles_total + '</div>';
-                html += '<div><strong>🎯 Asistencias:</strong> ' + data.equipo2.asistencias_total + '</div>';
                 html += '<div><strong>⭐ Mejor:</strong> ' + data.equipo2.mejor_rating.nombre + ' (' + data.equipo2.mejor_rating.valor + ')</div>';
-                html += '<div><strong>⚽ Goleador:</strong> ' + data.equipo2.max_goleador.nombre + ' (' + data.equipo2.max_goleador.goles + ')</div>';
-                html += '</div>';
-                
-                html += '</div>';
-                
-                let div = document.getElementById('comparacionResultado');
-                div.innerHTML = html;
-                div.style.display = 'block';
+                html += '<div><strong>⚽ Goleador:</strong> ' + data.equipo2.max_goleador.nombre + ' (' + data.equipo2.max_goleador.goles + ')</div></div></div>';
+                document.getElementById('comparacionResultado').innerHTML = html;
+                document.getElementById('comparacionResultado').style.display = 'block';
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             });
     }
     
-    // Cargar gráficos al iniciar
     window.onload = cargarGraficos;
 </script>
 </body>
@@ -454,7 +551,22 @@ HTML = """
 def index():
     selecciones = obtener_selecciones()
     total_jugadores = sum(s.get('jugadores', 0) for s in selecciones)
-    return render_template_string(HTML, selecciones=selecciones, total_selecciones=len(selecciones), total_jugadores=total_jugadores)
+    
+    # Calcular pronósticos
+    pronosticos = calcular_pronosticos(selecciones)
+    
+    # Añadir mejor_rating a cada selección para la plantilla
+    for sel in selecciones:
+        if 'plantilla' in sel and sel['plantilla']:
+            sel['mejor_rating'] = max(jug.get('rating', 0) for jug in sel['plantilla'])
+        else:
+            sel['mejor_rating'] = 0
+    
+    return render_template_string(HTML, 
+                                  selecciones=selecciones,
+                                  pronosticos=pronosticos,
+                                  total_selecciones=len(selecciones),
+                                  total_jugadores=total_jugadores)
 
 @app.route('/api/selecciones')
 def api_selecciones():
