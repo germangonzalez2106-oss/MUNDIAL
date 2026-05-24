@@ -6,11 +6,13 @@ import re
 
 app = Flask(__name__)
 
-# URI correcta para MongoDB Atlas
-MONGO_URI = os.environ.get('MONGO_URI', 'mongodb+srv://mundial_user:M4nzana2026@cluster666.tqvej0i.mongodb.net/?retryWrites=true&w=majority&tlsAllowInvalidCertificates=true')
+# URI estándar (sin +srv) con la contraseña correcta
+MONGO_URI = os.environ.get('MONGO_URI', 'mongodb://mundial_user:M4nzana2026@ac-0tfmbvr-shard-00-00.tqvej0i.mongodb.net:27017,ac-0tfmbvr-shard-00-01.tqvej0i.mongodb.net:27017,ac-0tfmbvr-shard-00-02.tqvej0i.mongodb.net:27017/?ssl=true&replicaSet=atlas-fjc1fq-shard-0&authSource=admin&tlsAllowInvalidCertificates=true')
 
 try:
-    client = MongoClient(MONGO_URI, tlsAllowInvalidCertificates=True, serverSelectionTimeoutMS=15000)
+    client = MongoClient(MONGO_URI, 
+                         tlsAllowInvalidCertificates=True,
+                         serverSelectionTimeoutMS=15000)
     db = client['mundial_2026']
     coleccion_selecciones = db['selecciones']
     client.admin.command('ping')
@@ -87,7 +89,7 @@ def index():
                     let div = document.getElementById('resultados');
                     if (data.length === 0) div.innerHTML = '<p>❌ No se encontraron resultados</p>';
                     else {
-                        let html = '<h3>🔍 Resultados (' + data.length + ')</h3><table><thead><tr><th>Jugador</th><th>Selección</th><th>Goles</th><th>Asistencias</th><th>Rating</th></tr></thead><tbody>';
+                        let html = '<h3>🔍 Resultados (' + data.length + ')</h3><tr><thead><tr><th>Jugador</th><th>Selección</th><th>Goles</th><th>Asistencias</th><th>Rating</th></tr></thead><tbody>';
                         for (let j of data) html += `<tr><td><strong>${j.jugador}</strong></td><td>${j.seleccion}</td><td>${j.goles}</td><td>${j.asistencias}</td><td>${j.rating}</td></tr>`;
                         html += '</tbody></table>';
                         div.innerHTML = html;
@@ -151,7 +153,6 @@ def index():
     
     html += '</tbody></table></body></html>'
     return html
-
 
 @app.route('/seleccion/<nombre>')
 def ver_seleccion(nombre):
