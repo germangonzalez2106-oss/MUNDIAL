@@ -134,7 +134,84 @@ ELIMINATORIAS = {
 
 ODDS_API_KEY = "1928777e3a71509cabffaf3c507876ce"
 
+# ==================== RESULTADOS DE ELIMINATORIAS ====================
+
+PARTIDOS_ELIMINATORIAS = {
+    "Sudamérica": [
+        {"fecha": "2025-11-21", "local": "Argentina", "visitante": "Brasil", "goles_local": 2, "goles_visitante": 1, "goleadores_local": ["Messi (2)"], "goleadores_visitante": ["Vinicius"]},
+        {"fecha": "2025-10-14", "local": "Brasil", "visitante": "Uruguay", "goles_local": 1, "goles_visitante": 1, "goleadores_local": ["Rodrygo"], "goleadores_visitante": ["Darwin Núñez"]},
+        {"fecha": "2025-10-10", "local": "Argentina", "visitante": "Uruguay", "goles_local": 3, "goles_visitante": 0, "goleadores_local": ["Messi (2)", "Lautaro Martínez"], "goleadores_visitante": []},
+        {"fecha": "2025-09-10", "local": "Colombia", "visitante": "Argentina", "goles_local": 1, "goles_visitante": 2, "goleadores_local": ["Luis Díaz"], "goleadores_visitante": ["Messi", "Lautaro Martínez"]},
+        {"fecha": "2025-09-05", "local": "Ecuador", "visitante": "Brasil", "goles_local": 0, "goles_visitante": 1, "goleadores_local": [], "goleadores_visitante": ["Vinicius"]},
+        {"fecha": "2025-03-25", "local": "Argentina", "visitante": "Chile", "goles_local": 4, "goles_visitante": 0, "goleadores_local": ["Messi", "Di María", "Lautaro", "Enzo Fernández"], "goleadores_visitante": []},
+        {"fecha": "2025-03-20", "local": "Paraguay", "visitante": "Argentina", "goles_local": 1, "goles_visitante": 1, "goleadores_local": ["Sanabria"], "goleadores_visitante": ["Lautaro"]},
+        {"fecha": "2024-11-15", "local": "Uruguay", "visitante": "Argentina", "goles_local": 1, "goles_visitante": 1, "goleadores_local": ["Darwin Núñez"], "goleadores_visitante": ["Messi"]},
+    ],
+    "Europa": [
+        {"fecha": "2026-03-31", "local": "Bosnia", "visitante": "Italia", "goles_local": 1, "goles_visitante": 1, "penales": "4-1", "ganador": "Bosnia"},
+        {"fecha": "2026-03-31", "local": "Suecia", "visitante": "Polonia", "goles_local": 3, "goles_visitante": 2, "ganador": "Suecia"},
+        {"fecha": "2026-03-31", "local": "Kosovo", "visitante": "Turquía", "goles_local": 0, "goles_visitante": 1, "ganador": "Turquía"},
+        {"fecha": "2026-03-31", "local": "Dinamarca", "visitante": "República Checa", "goles_local": 2, "goles_visitante": 2, "penales": "1-3", "ganador": "República Checa"},
+    ],
+    "África": [
+        {"fecha": "2025-10-14", "local": "Sudáfrica", "visitante": "Nigeria", "goles_local": 2, "goles_visitante": 1, "goleadores_local": ["Mokwana", "Rayners"], "goleadores_visitante": ["Osimhen"]},
+        {"fecha": "2025-10-14", "local": "Egipto", "visitante": "Etiopía", "goles_local": 2, "goles_visitante": 0, "goleadores_local": ["Salah", "Zizo"], "goleadores_visitante": []},
+        {"fecha": "2025-10-14", "local": "Marruecos", "visitante": "Níger", "goles_local": 2, "goles_visitante": 1, "goleadores_local": ["Brahim Díaz", "El Khannous"], "goleadores_visitante": []},
+        {"fecha": "2025-10-14", "local": "Argelia", "visitante": "Botsuana", "goles_local": 3, "goles_visitante": 2, "goleadores_local": ["Amoura (2)", "Belaïli"], "goleadores_visitante": []},
+        {"fecha": "2025-10-14", "local": "Costa de Marfil", "visitante": "Burundi", "goles_local": 1, "goles_visitante": 0, "goleadores_local": ["Haller"], "goleadores_visitante": []},
+        {"fecha": "2025-10-14", "local": "Ghana", "visitante": "Chad", "goles_local": 5, "goles_visitante": 0, "goleadores_local": ["Kudus (2)", "Williams", "Nuamah", "Samed"], "goleadores_visitante": []},
+    ],
+    "Asia": [
+        {"fecha": "2025-06-11", "local": "Corea del Sur", "visitante": "China", "goles_local": 3, "goles_visitante": 0, "goleadores_local": ["Son Heung-min", "Kim Min-jae", "Hwang Hee-chan"]},
+        {"fecha": "2025-06-11", "local": "Australia", "visitante": "China", "goles_local": 3, "goles_visitante": 1, "goleadores_local": ["Miller", "Goodwin", "Velupillay"], "goleadores_visitante": ["Wu Lei"]},
+        {"fecha": "2025-06-11", "local": "Corea del Sur", "visitante": "Tailandia", "goles_local": 1, "goles_visitante": 1, "goleadores_local": ["Son Heung-min"], "goleadores_visitante": ["Suphanat"]},
+        {"fecha": "2025-06-06", "local": "Japón", "visitante": "Siria", "goles_local": 5, "goles_visitante": 0, "goleadores_local": ["Kubo (2)", "Mitoma", "Kamada", "Ueda"]},
+        {"fecha": "2025-06-06", "local": "Irán", "visitante": "Uzbekistán", "goles_local": 2, "goles_visitante": 2, "goleadores_local": ["Taremi", "Azmoun"], "goleadores_visitante": ["Shomurodov", "Fayzullaev"]},
+    ],
+    "Norteamérica": [
+        {"fecha": "2025-11-18", "local": "Costa Rica", "visitante": "Honduras", "goles_local": 0, "goles_visitante": 0, "nota": "Ambos eliminados"},
+        {"fecha": "2025-11-18", "local": "México", "visitante": "Canadá", "goles_local": 2, "goles_visitante": 1, "goleadores_local": ["Jiménez", "Lozano"], "goleadores_visitante": ["David"]},
+        {"fecha": "2025-11-18", "local": "Estados Unidos", "visitante": "Panamá", "goles_local": 3, "goles_visitante": 0, "goleadores_local": ["Pulisic (2)", "Balogun"]},
+    ],
+}
+
+def obtener_partidos_por_seleccion(seleccion):
+    """Obtiene todos los partidos de una selección en las eliminatorias"""
+    partidos = []
+    for continente, partidos_continente in PARTIDOS_ELIMINATORIAS.items():
+        for p in partidos_continente:
+            if p['local'] == seleccion:
+                partidos.append({
+                    "fecha": p['fecha'],
+                    "rival": p['visitante'],
+                    "local": True,
+                    "goles_favor": p['goles_local'],
+                    "goles_contra": p['goles_visitante'],
+                    "goleadores": p.get('goleadores_local', []),
+                    "competicion": continente
+                })
+            elif p['visitante'] == seleccion:
+                partidos.append({
+                    "fecha": p['fecha'],
+                    "rival": p['local'],
+                    "local": False,
+                    "goles_favor": p['goles_visitante'],
+                    "goles_contra": p['goles_local'],
+                    "goleadores": p.get('goleadores_visitante', []),
+                    "competicion": continente
+                })
+    return sorted(partidos, key=lambda x: x['fecha'], reverse=True)
+
+def obtener_todos_resultados(continente=None):
+    """Obtiene todos los resultados por continente"""
+    if continente:
+        return PARTIDOS_ELIMINATORIAS.get(continente, [])
+    return PARTIDOS_ELIMINATORIAS
+
 # ==================== FUNCIONES ====================
+
+
+
 def obtener_selecciones():
     if coleccion is None: return []
     return list(coleccion.find({}, {'_id': 0}))
@@ -540,7 +617,124 @@ HTML_JUGADOR = """
 </html>
 """
 
+HTML_RESULTADOS = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Resultados de Eliminatorias</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:'Segoe UI',Arial,sans-serif;background:#1a1a2e;color:white;padding:20px;}
+        .container{max-width:1000px;margin:0 auto;}
+        h1{text-align:center;color:#4CAF50;margin-bottom:20px;}
+        .nav{text-align:center;margin-bottom:20px;}
+        .nav a{color:#4CAF50;text-decoration:none;margin:0 10px;padding:8px 20px;background:#0f3460;border-radius:25px;}
+        select, button{padding:10px 20px;border-radius:25px;border:none;background:#0f3460;color:white;cursor:pointer;}
+        button{background:#4CAF50;}
+        .flex{display:flex;gap:10px;justify-content:center;margin:20px 0;flex-wrap:wrap;}
+        .partidos{background:#0f3460;border-radius:15px;padding:20px;margin-top:20px;}
+        .partido{border-bottom:1px solid #2a2a4e;padding:15px;margin-bottom:10px;}
+        .partido:last-child{border-bottom:none;}
+        .fecha{color:#aaa;font-size:12px;}
+        .resultado{font-size:1.5em;font-weight:bold;margin:10px 0;}
+        .resultado.ganador{color:#4CAF50;}
+        .resultado.perdedor{color:#f44336;}
+        .resultado.empate{color:#FFC107;}
+        .goleadores{color:#aaa;font-size:12px;margin-top:5px;}
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="nav">
+        <a href="/">🏆 Ranking</a>
+        <a href="/jugador">🔍 Jugadores</a>
+        <a href="/eliminatorias">🌍 Eliminatorias</a>
+        <a href="/resultados">📋 Resultados</a>
+    </div>
+    <h1>📋 Resultados de Eliminatorias</h1>
+    
+    <div class="flex">
+        <select id="seleccion">
+            <option value="">Selecciona una selección</option>
+            {% for s in selecciones %}
+            <option value="{{ s.nombre }}">{{ s.nombre }}</option>
+            {% endfor %}
+        </select>
+        <button onclick="cargarPartidos()">Ver Partidos</button>
+    </div>
+    
+    <div id="resultados" class="partidos" style="display:none;"></div>
+</div>
+
+<script>
+    function cargarPartidos() {
+        let seleccion = document.getElementById('seleccion').value;
+        if (!seleccion) { alert("Selecciona una selección"); return; }
+        
+        let div = document.getElementById('resultados');
+        div.innerHTML = '<p>Cargando partidos...</p>';
+        div.style.display = 'block';
+        
+        fetch('/api/partidos/' + encodeURIComponent(seleccion))
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    div.innerHTML = '<p>❌ ' + data.error + '</p>';
+                    return;
+                }
+                
+                let html = `<h2>📊 ${seleccion}</h2>`;
+                let ganados = 0, empatados = 0, perdidos = 0, gf = 0, gc = 0;
+                
+                for (let p of data) {
+                    gf += p.goles_favor;
+                    gc += p.goles_contra;
+                    if (p.goles_favor > p.goles_contra) ganados++;
+                    else if (p.goles_favor < p.goles_contra) perdidos++;
+                    else empatados++;
+                    
+                    let clase = '';
+                    if (p.goles_favor > p.goles_contra) clase = 'ganador';
+                    else if (p.goles_favor < p.goles_contra) clase = 'perdedor';
+                    else clase = 'empate';
+                    
+                    let localStr = p.local ? '🏠 ' + seleccion : seleccion;
+                    let visitanteStr = p.local ? p.rival : '✈️ ' + p.rival;
+                    
+                    html += `<div class="partido">
+                        <div class="fecha">📅 ${p.fecha} | ${p.competicion}</div>
+                        <div class="resultado ${clase}">${localStr} ${p.goles_favor} - ${p.goles_contra} ${visitanteStr}</div>`;
+                    
+                    if (p.goleadores && p.goleadores.length > 0) {
+                        html += `<div class="goleadores">⚽ Goleadores: ${p.goleadores.join(', ')}</div>`;
+                    }
+                    html += `</div>`;
+                }
+                
+                html += `<div style="margin-top:20px;background:#1a1a2e;padding:15px;border-radius:10px;">
+                    <h3>📊 Resumen</h3>
+                    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;text-align:center;margin-top:10px;">
+                        <div><span class="big-number">${ganados}</span><br>🏆 Victorias</div>
+                        <div><span class="big-number">${empatados}</span><br>🤝 Empates</div>
+                        <div><span class="big-number">${perdidos}</span><br>❌ Derrotas</div>
+                        <div><span class="big-number">${gf}</span><br>⚽ Goles a favor</div>
+                        <div><span class="big-number">${gc}</span><br>🛡️ Goles en contra</div>
+                    </div>
+                </div>`;
+                
+                div.innerHTML = html;
+            });
+    }
+</script>
+</body>
+</html>
+"""
+
 # ==================== RUTAS ====================
+
+
 @app.route('/')
 def index():
     selecciones = obtener_selecciones()
@@ -601,6 +795,18 @@ def api_buscar_jugador():
         if k in nombre or nombre in k:
             return jsonify(v)
     return jsonify({'error': 'No encontrado'}), 404
+
+@app.route('/resultados')
+def resultados():
+    selecciones = obtener_selecciones()
+    return render_template_string(HTML_RESULTADOS, selecciones=selecciones)
+
+@app.route('/api/partidos/<seleccion>')
+def api_partidos(seleccion):
+    partidos = obtener_partidos_por_seleccion(seleccion)
+    if partidos:
+        return jsonify(partidos)
+    return jsonify({'error': 'No se encontraron partidos'}), 404
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
