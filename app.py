@@ -142,6 +142,77 @@ def buscar_jugador_local(nombre_jugador):
             return data
     return None
 
+# ==================== CUOTAS EN TIEMPO REAL ====================
+ODDS_API_KEY = "1928777e3a71509cabffaf3c507876ce"
+ODDS_BASE_URL = "https://api.the-odds-api.com/v4"
+
+def obtener_cuotas_deporte(sport="soccer", region="us,uk,eu"):
+    """Obtiene cuotas en tiempo real para fútbol"""
+    url = f"{ODDS_BASE_URL}/sports/{sport}/odds"
+    
+    params = {
+        "apiKey": ODDS_API_KEY,
+        "regions": region,
+        "markets": "h2h",
+        "oddsFormat": "decimal"
+    }
+    
+    try:
+        response = requests.get(url, params=params, timeout=15)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"❌ Error {response.status_code}")
+            return None
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return None
+
+@app.route('/api/odds')
+def api_odds():
+    """Endpoint para obtener cuotas en tiempo real"""
+    data = obtener_cuotas_deporte()
+    
+    if data:
+        partidos = []
+        for partido in data:
+            # Extraer mejores cuotas de cada casa
+            cuotas = {'home': 0, 'draw': 0, 'away': 0}
+            mejores_casas = {'home': '', 'draw': '', 'away': ''}
+            
+            for bookmaker in partido.get('bookmakers', []):
+                for market in bookmaker.get('markets', []):
+                    if market.get('key') == 'h2h':
+                        for outcome in market.get('outcomes', []):
+                            nombre = outcome.get('name', '')
+                            precio = outcome.get('price', 0)
+                            
+                            if nombre == partido.get('home_team'):
+                                if precio > cuotas['home']:
+                                    cuotas['home'] = precio
+                                    mejores_casas['home'] = bookmaker.get('title', '')
+                            elif nombre == 'Draw':
+                                if precio > cuotas['draw']:
+                                    cuotas['draw'] = precio
+                                    mejores_casas['draw'] = bookmaker.get('title', '')
+                            else:
+                                if precio > cuotas['away']:
+                                    cuotas['away'] = precio
+                                    mejores_casas['away'] = bookmaker.get('title', '')
+            
+            partidos.append({
+                'home_team': partido.get('home_team'),
+                'away_team': partido.get('away_team'),
+                'commence_time': partido.get('commence_time'),
+                'cuotas': cuotas,
+                'mejores_casas': mejores_casas
+            })
+        
+        return jsonify({'success': True, 'games': partidos, 'count': len(partidos)})
+    
+    return jsonify({'success': False, 'error': 'No se pudieron obtener las cuotas'}), 500
+
 # ==================== HTML PRINCIPAL ====================
 INDEX_HTML = """
 <!DOCTYPE html>
