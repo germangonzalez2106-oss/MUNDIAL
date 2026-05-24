@@ -4,7 +4,6 @@ from pymongo import MongoClient
 
 app = Flask(__name__)
 
-# URI de MongoDB Atlas (configurada en Render como variable de entorno)
 MONGO_URI = os.environ.get('MONGO_URI', 'mongodb+srv://mundial_user:M4nzana2026@cluster666.tqvej0i.mongodb.net/?tls=true&tlsAllowInvalidCertificates=true&retryWrites=true&w=majority&appName=Cluster666')
 
 try:
