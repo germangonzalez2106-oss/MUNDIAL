@@ -7,14 +7,17 @@ from bson.objectid import ObjectId
 import re
 
 # ==================== CONFIGURACIÓN ====================
-os.chdir(r"C:\Users\germa\AppData\Local\Programs\Python\Python312\Scripts\MUNDIALAPP")
+# ⚠️ NO USES os.chdir() en producción
+# Si necesitas rutas, usa rutas relativas
 
 app = Flask(__name__)
 
-EXCEL_PATH = r"C:\Users\germa\AppData\Local\Programs\Python\Python312\Scripts\MUNDIALAPP\data\mundial_2026_todas_las_selecciones.xlsx"
+# Ruta del Excel (usando ruta relativa al proyecto)
+EXCEL_PATH = "data/mundial_2026_todas_las_selecciones.xlsx"
 
 # ==================== CONEXIÓN A MONGODB ATLAS ====================
-MONGO_URI = "mongodb+srv://mundial_user:M4nzana_3*@cluster666.tqvej0i.mongodb.net/?retryWrites=true&w=majority"
+# Usar variable de entorno para la contraseña (más seguro)
+MONGO_URI = os.environ.get('MONGO_URI', 'mongodb+srv://mundial_user:M4nzana_3*@cluster666.tqvej0i.mongodb.net/?retryWrites=true&w=majority')
 NOMBRE_DB = "mundial_2026"
 NOMBRE_COLECCION = "selecciones"
 
