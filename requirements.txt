@@ -3,5 +3,3 @@ pymongo==4.6.1
 dnspython==2.6.1
 gunicorn==21.2.0
 requests==2.31.0
-datafc==1.2.0
-pandas==2.0.3
