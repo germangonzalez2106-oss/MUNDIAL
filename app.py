@@ -134,6 +134,107 @@ ELIMINATORIAS = {
 
 ODDS_API_KEY = "1928777e3a71509cabffaf3c507876ce"
 
+# ==================== ESTADÍSTICAS AVANZADAS DE JUGADORES ====================
+
+import pandas as pd
+from datafc import league_player_stats_data
+
+def obtener_estadisticas_avanzadas_jugador(nombre_jugador, tournament_id=52, season_id=77805):
+    """
+    Obtiene estadísticas avanzadas de un jugador específico en la Premier League
+    usando datafc
+    
+    Args:
+        nombre_jugador: Nombre del jugador a buscar
+        tournament_id: ID del torneo (52 = Premier League)
+        season_id: ID de la temporada (77805 = 2025/2026)
+    
+    Returns:
+        Diccionario con estadísticas del jugador o None
+    """
+    print(f"🔍 Buscando estadísticas avanzadas de '{nombre_jugador}'...")
+    
+    # Campos a obtener
+    campos = [
+        "player_name", "team_name", "position",
+        "goals", "assists", "rating",
+        "totalShots", "shotsOnTarget", "keyPasses",
+        "successfulDribbles", "tackles", "interceptions",
+        "accuratePasses", "accuratePassesPercentage",
+        "yellowCards", "redCards", "appearances", "minutesPlayed"
+    ]
+    
+    try:
+        # Obtener datos de la liga
+        df = league_player_stats_data(
+            tournament_id=tournament_id,
+            season_id=season_id,
+            order="-rating",
+            accumulation="total",
+            fields=campos,
+            max_players=100
+        )
+        
+        # Buscar el jugador
+        patron = re.compile(re.escape(nombre_jugador), re.IGNORECASE)
+        resultados = df[df['player_name'].str.contains(patron, na=False)]
+        
+        if resultados.empty:
+            return None
+        
+        jugador = resultados.iloc[0].to_dict()
+        
+        # Calcular estadísticas por partido
+        apariciones = jugador.get('appearances', 1)
+        if apariciones == 0:
+            apariciones = 1
+        
+        jugador['tiros_por_partido'] = round(jugador.get('totalShots', 0) / apariciones, 2)
+        jugador['tiros_puerta_por_partido'] = round(jugador.get('shotsOnTarget', 0) / apariciones, 2)
+        jugador['pases_clave_por_partido'] = round(jugador.get('keyPasses', 0) / apariciones, 2)
+        jugador['regates_por_partido'] = round(jugador.get('successfulDribbles', 0) / apariciones, 2)
+        jugador['entradas_por_partido'] = round(jugador.get('tackles', 0) / apariciones, 2)
+        jugador['intercepciones_por_partido'] = round(jugador.get('interceptions', 0) / apariciones, 2)
+        
+        return jugador
+        
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return None
+
+def obtener_top_jugadores_por_estadistica(estadistica, tournament_id=52, season_id=77805, top_n=20):
+    """
+    Obtiene el top de jugadores por una estadística específica
+    
+    Args:
+        estadistica: Campo por el cual ordenar (ej: "totalShots", "keyPasses")
+        tournament_id: ID del torneo
+        season_id: ID de la temporada
+        top_n: Número de jugadores a retornar
+    """
+    campos = ["player_name", "team_name", estadistica, "appearances", "rating"]
+    
+    try:
+        df = league_player_stats_data(
+            tournament_id=tournament_id,
+            season_id=season_id,
+            order=f"-{estadistica}",
+            accumulation="total",
+            fields=campos,
+            max_players=top_n
+        )
+        
+        # Calcular promedio por partido
+        df[f'{estadistica}_por_partido'] = df.apply(
+            lambda row: round(row[estadistica] / max(1, row['appearances']), 2), 
+            axis=1
+        )
+        
+        return df
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return None
+
 # ==================== RESULTADOS DE ELIMINATORIAS ====================
 
 PARTIDOS_ELIMINATORIAS = {
@@ -731,6 +832,173 @@ HTML_RESULTADOS = """
 </body>
 </html>
 """
+HTML_ESTADISTICAS = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Estadísticas Avanzadas - Jugadores</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:'Segoe UI',Arial,sans-serif;background:#1a1a2e;color:white;padding:20px;}
+        .container{max-width:1200px;margin:0 auto;}
+        h1{text-align:center;color:#4CAF50;margin-bottom:20px;}
+        .nav{text-align:center;margin-bottom:20px;}
+        .nav a{color:#4CAF50;text-decoration:none;margin:0 10px;padding:8px 20px;background:#0f3460;border-radius:25px;}
+        
+        .search-section{background:#0f3460;border-radius:15px;padding:20px;margin-bottom:30px;}
+        .flex{display:flex;gap:10px;flex-wrap:wrap;margin:15px 0;}
+        input, button{padding:10px 20px;border-radius:25px;border:none;}
+        input{background:#1a1a2e;color:white;flex:1;}
+        button{background:#4CAF50;color:white;cursor:pointer;}
+        
+        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;margin:20px 0;}
+        .stat-card{background:#1a1a2e;padding:15px;border-radius:10px;text-align:center;}
+        .stat-card h3{font-size:2em;color:#FFC107;}
+        .stat-card .label{color:#aaa;font-size:12px;margin-top:5px;}
+        
+        .top-section{background:#0f3460;border-radius:15px;padding:20px;margin-bottom:30px;}
+        .top-buttons{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;}
+        .top-buttons button{background:#2196F3;}
+        table{width:100%;background:#1a1a2e;border-radius:10px;border-collapse:collapse;}
+        th,td{padding:10px;text-align:left;border-bottom:1px solid #2a2a4e;}
+        th{background:#4CAF50;}
+        tr:hover{background:#2a2a4e;}
+        .big-number{font-weight:bold;color:#FFC107;}
+        
+        .results{display:none;margin-top:20px;}
+        @media (max-width:600px){.stats-grid{grid-template-columns:repeat(2,1fr);}}
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="nav">
+        <a href="/">🏆 Ranking</a>
+        <a href="/jugador">🔍 Jugadores</a>
+        <a href="/estadisticas">📊 Estadísticas</a>
+        <a href="/eliminatorias">🌍 Eliminatorias</a>
+    </div>
+    
+    <h1>📊 Estadísticas Avanzadas de Jugadores</h1>
+    
+    <!-- Buscador individual -->
+    <div class="search-section">
+        <h2>🔍 Buscar Estadísticas de un Jugador</h2>
+        <div class="flex">
+            <input type="text" id="searchInput" placeholder="Ej: Haaland, Salah, De Bruyne...">
+            <button onclick="buscarJugador()">Buscar</button>
+        </div>
+        <div id="jugadorStats" class="results"></div>
+    </div>
+    
+    <!-- Top rankings -->
+    <div class="top-section">
+        <h2>🏆 Top Jugadores por Estadística</h2>
+        <div class="top-buttons">
+            <button onclick="cargarTop('tiros')">🎯 Más Tiros</button>
+            <button onclick="cargarTop('pases_clave')">🔑 Más Pases Clave</button>
+            <button onclick="cargarTop('regates')">💨 Más Regates</button>
+        </div>
+        <div id="topResultados" class="results"></div>
+    </div>
+</div>
+
+<script>
+    function buscarJugador() {
+        let nombre = document.getElementById('searchInput').value;
+        if (nombre.length < 2) { alert("Mínimo 2 caracteres"); return; }
+        
+        let div = document.getElementById('jugadorStats');
+        div.innerHTML = '<p>Cargando...</p>';
+        div.style.display = 'block';
+        
+        fetch('/api/jugador/estadisticas?nombre=' + encodeURIComponent(nombre))
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    div.innerHTML = '<p>❌ ' + data.error + '</p>';
+                    return;
+                }
+                
+                let html = `<h3>${data.player_name}</h3>
+                <p><strong>Equipo:</strong> ${data.team_name} | <strong>Posición:</strong> ${data.position}</p>
+                <p><strong>Partidos:</strong> ${data.appearances} | ⏱️ Minutos: ${data.minutesPlayed}</p>
+                
+                <div class="stats-grid">
+                    <div class="stat-card"><h3>${data.goals}</h3><div class="label">⚽ Goles</div></div>
+                    <div class="stat-card"><h3>${data.assists}</h3><div class="label">🎯 Asistencias</div></div>
+                    <div class="stat-card"><h3>${data.rating}</h3><div class="label">⭐ Rating</div></div>
+                </div>
+                
+                <h4>📊 Estadísticas por Partido</h4>
+                <div class="stats-grid">
+                    <div class="stat-card"><h3>${data.tiros_por_partido}</h3><div class="label">🎯 Tiros/Partido</div></div>
+                    <div class="stat-card"><h3>${data.tiros_puerta_por_partido}</h3><div class="label">🎯 Tiros a Puerta/Partido</div></div>
+                    <div class="stat-card"><h3>${data.pases_clave_por_partido}</h3><div class="label">🔑 Pases Clave/Partido</div></div>
+                    <div class="stat-card"><h3>${data.regates_por_partido}</h3><div class="label">💨 Regates/Partido</div></div>
+                    <div class="stat-card"><h3>${data.entradas_por_partido}</h3><div class="label">🛡️ Entradas/Partido</div></div>
+                    <div class="stat-card"><h3>${data.intercepciones_por_partido}</h3><div class="label">🚫 Intercepciones/Partido</div></div>
+                </div>`;
+                
+                div.innerHTML = html;
+            })
+            .catch(e => div.innerHTML = '<p>Error: ' + e.message + '</p>');
+    }
+    
+    function cargarTop(tipo) {
+        let div = document.getElementById('topResultados');
+        div.innerHTML = '<p>Cargando...</p>';
+        div.style.display = 'block';
+        
+        let url = '';
+        let titulo = '';
+        
+        if (tipo === 'tiros') {
+            url = '/api/top/tiros';
+            titulo = '🎯 Top Jugadores - Más Tiros por Partido';
+        } else if (tipo === 'pases_clave') {
+            url = '/api/top/pases_clave';
+            titulo = '🔑 Top Jugadores - Más Pases Clave por Partido';
+        } else if (tipo === 'regates') {
+            url = '/api/top/regates';
+            titulo = '💨 Top Jugadores - Más Regates por Partido';
+        }
+        
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    div.innerHTML = '<p>❌ ' + data.error + '</p>';
+                    return;
+                }
+                
+                let html = `<h3>${titulo}</h3>
+                <table>
+                    <thead><tr><th>#</th><th>Jugador</th><th>Equipo</th><th>Total</th><th>Promedio</th><th>Rating</th></tr></thead>
+                    <tbody>`;
+                
+                for (let i = 0; i < data.length; i++) {
+                    let p = data[i];
+                    let campo = tipo === 'tiros' ? 'totalShots' : (tipo === 'pases_clave' ? 'keyPasses' : 'successfulDribbles');
+                    html += `<tr>
+                        <td>${i+1}</td>
+                        <td><strong>${p.player_name}</strong></td>
+                        <td>${p.team_name}</td>
+                        <td>${p[campo]}</td>
+                        <td class="big-number">${p[campo + '_por_partido']}</td>
+                        <td>${p.rating}</td>
+                    </tr>`;
+                }
+                
+                html += `</tbody></table>`;
+                div.innerHTML = html;
+            });
+    }
+</script>
+</body>
+</html>
+"""
 
 # ==================== RUTAS ====================
 
@@ -807,6 +1075,47 @@ def api_partidos(seleccion):
     if partidos:
         return jsonify(partidos)
     return jsonify({'error': 'No se encontraron partidos'}), 404
+
+@app.route('/api/jugador/estadisticas')
+def api_jugador_estadisticas():
+    """Obtiene estadísticas avanzadas de un jugador"""
+    nombre = request.args.get('nombre', '')
+    if not nombre:
+        return jsonify({'error': 'Nombre requerido'}), 400
+    
+    jugador = obtener_estadisticas_avanzadas_jugador(nombre)
+    
+    if jugador:
+        return jsonify(jugador)
+    return jsonify({'error': 'Jugador no encontrado'}), 404
+
+@app.route('/api/top/tiros')
+def api_top_tiros():
+    """Top jugadores con más tiros por partido"""
+    df = obtener_top_jugadores_por_estadistica('totalShots', top_n=20)
+    if df is not None:
+        return jsonify(df.to_dict('records'))
+    return jsonify({'error': 'No se pudieron obtener datos'}), 500
+
+@app.route('/api/top/pases_clave')
+def api_top_pases_clave():
+    """Top jugadores con más pases clave por partido"""
+    df = obtener_top_jugadores_por_estadistica('keyPasses', top_n=20)
+    if df is not None:
+        return jsonify(df.to_dict('records'))
+    return jsonify({'error': 'No se pudieron obtener datos'}), 500
+
+@app.route('/api/top/regates')
+def api_top_regates():
+    """Top jugadores con más regates por partido"""
+    df = obtener_top_jugadores_por_estadistica('successfulDribbles', top_n=20)
+    if df is not None:
+        return jsonify(df.to_dict('records'))
+    return jsonify({'error': 'No se pudieron obtener datos'}), 500
+
+@app.route('/estadisticas')
+def estadisticas():
+    return render_template_string(HTML_ESTADISTICAS)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
