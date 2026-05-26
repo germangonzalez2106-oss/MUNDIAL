@@ -626,9 +626,15 @@ HTML = """
     </div>
     
     <div class="charts">
-        <div class="chart-box"><h3>⭐ Rating Promedio</h3><canvas id="ratingChart"></canvas></div>
-        <div class="chart-box"><h3>⚽ Goles Totales</h3><canvas id="golesChart"></canvas></div>
+    <div class="chart-box">
+        <h3>⭐ Top 10 - Rating Promedio</h3>
+        <canvas id="ratingChart" width="400" height="250" style="max-height: 250px; width: 100%;"></canvas>
     </div>
+    <div class="chart-box">
+        <h3>⚽ Top 10 - Goles Totales</h3>
+        <canvas id="golesChart" width="400" height="250" style="max-height: 250px; width: 100%;"></canvas>
+    </div>
+</div>
     
     <!-- Pronóstico -->
     <h2>🔮 Pronóstico</h2>
@@ -669,25 +675,104 @@ HTML = """
     let ratingChart, golesChart;
     
     function cargarGraficos() {
-        fetch('/api/selecciones').then(r => r.json()).then(data => {
-            let topRating = [...data].sort((a,b)=>b.rating_promedio - a.rating_promedio).slice(0,10);
-            let ctx1 = document.getElementById('ratingChart').getContext('2d');
-            if (ratingChart) ratingChart.destroy();
-            ratingChart = new Chart(ctx1, {
-                type: 'bar',
-                data: { labels: topRating.map(t=>t.nombre), datasets: [{ label: 'Rating', data: topRating.map(t=>t.rating_promedio), backgroundColor: 'rgba(76,175,80,0.7)' }] },
-                options: { responsive: true }
-            });
-            let topGoles = [...data].sort((a,b)=>b.goles_total - a.goles_total).slice(0,10);
-            let ctx2 = document.getElementById('golesChart').getContext('2d');
-            if (golesChart) golesChart.destroy();
-            golesChart = new Chart(ctx2, {
-                type: 'bar',
-                data: { labels: topGoles.map(t=>t.nombre), datasets: [{ label: 'Goles', data: topGoles.map(t=>t.goles_total), backgroundColor: 'rgba(33,150,243,0.7)' }] },
-                options: { responsive: true }
-            });
-        });
+        // Verificar que los canvas existen
+        const canvasRating = document.getElementById('ratingChart');
+        const canvasGoles = document.getElementById('golesChart');
+        
+        if (!canvasRating || !canvasGoles) {
+            console.error('No se encontraron los canvas');
+            return;
+        }
+        
+        fetch('/api/selecciones')
+            .then(r => r.json())
+            .then(data => {
+                // Filtrar solo selecciones con rating_promedio > 0
+                let seleccionesConRating = data.filter(s => s.rating_promedio > 0);
+                let topRating = [...seleccionesConRating].sort((a,b) => b.rating_promedio - a.rating_promedio).slice(0, 10);
+                
+                let ctx1 = canvasRating.getContext('2d');
+                if (ratingChart) ratingChart.destroy();
+                ratingChart = new Chart(ctx1, {
+                    type: 'bar',
+                    data: {
+                        labels: topRating.map(t => t.nombre),
+                        datasets: [{
+                            label: 'Rating Promedio',
+                            data: topRating.map(t => t.rating_promedio),
+                            backgroundColor: 'rgba(76, 175, 80, 0.7)',
+                            borderColor: 'rgba(76, 175, 80, 1)',
+                            borderWidth: 1,
+                            borderRadius: 10
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { labels: { color: 'white' } },
+                            tooltip: { callbacks: { label: function(ctx) { return ctx.raw.toFixed(2); } } }
+                        },
+                        scales: {
+                            y: { 
+                                ticks: { color: 'white' },
+                                grid: { color: 'rgba(255,255,255,0.1)' },
+                                title: { display: true, text: 'Rating', color: 'white' }
+                            },
+                            x: { 
+                                ticks: { color: 'white', rotation: 45, font: { size: 10 } },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+                
+                // Top 10 por goles (sin filtrar)
+                let topGoles = [...data].sort((a,b) => b.goles_total - a.goles_total).slice(0, 10);
+                let ctx2 = canvasGoles.getContext('2d');
+                if (golesChart) golesChart.destroy();
+                golesChart = new Chart(ctx2, {
+                    type: 'bar',
+                    data: {
+                        labels: topGoles.map(t => t.nombre),
+                        datasets: [{
+                            label: 'Goles Totales',
+                            data: topGoles.map(t => t.goles_total),
+                            backgroundColor: 'rgba(33, 150, 243, 0.7)',
+                            borderColor: 'rgba(33, 150, 243, 1)',
+                            borderWidth: 1,
+                            borderRadius: 10
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { labels: { color: 'white' } },
+                            tooltip: { callbacks: { label: function(ctx) { return ctx.raw.toFixed(0); } } }
+                        },
+                        scales: {
+                            y: { 
+                                ticks: { color: 'white' },
+                                grid: { color: 'rgba(255,255,255,0.1)' },
+                                title: { display: true, text: 'Goles', color: 'white' }
+                            },
+                            x: { 
+                                ticks: { color: 'white', rotation: 45, font: { size: 10 } },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error('Error cargando gráficos:', error));
     }
+    
+    // Esperar a que el DOM esté completamente cargado
+    document.addEventListener('DOMContentLoaded', function() {
+        cargarGraficos();
+    });
+</script>
     
     function calcularPronostico() {
         let local = document.getElementById('eqLocal').value;
