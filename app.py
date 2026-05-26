@@ -22,64 +22,6 @@ JUGADORES_MANUALES = {
     "cristiano ronaldo": {"player": "Cristiano Ronaldo", "team": "Al Nassr", "league": "Saudi Pro League", "goals": 28, "assists": 6, "rating": 7.9}
 }
 
-
-# ==================== ESTADÍSTICAS AVANZADAS CON SOCCERDATA ====================
-import soccerdata as sd
-import re
-
-def obtener_estadisticas_jugador(nombre_jugador):
-    """
-    Obtiene estadísticas avanzadas de un jugador usando soccerdata (FBref)
-    """
-    print(f"🔍 Buscando estadísticas de '{nombre_jugador}'...")
-    
-    try:
-        # Conectar a FBref para la Premier League
-        fbref = sd.FBref(leagues="ENG-Premier League", seasons="2025-2026")
-        
-        # Obtener estadísticas de jugadores
-        player_stats = fbref.read_player_season_stats()
-        
-        # Buscar el jugador
-        patron = re.compile(re.escape(nombre_jugador), re.IGNORECASE)
-        resultados = player_stats[player_stats['player'].str.contains(patron, na=False)]
-        
-        if resultados.empty:
-            return None
-        
-        jugador = resultados.iloc[0].to_dict()
-        
-        # Calcular estadísticas por partido
-        partidos = jugador.get('games', 1)
-        if partidos == 0:
-            partidos = 1
-        
-        estadisticas = {
-            'nombre': jugador.get('player', nombre_jugador),
-            'equipo': jugador.get('team', 'N/A'),
-            'posicion': jugador.get('position', 'N/A'),
-            'partidos': partidos,
-            'goles': jugador.get('goals', 0),
-            'asistencias': jugador.get('assists', 0),
-            'rating': jugador.get('rating', 0),
-            'tiros_totales': jugador.get('shots', 0),
-            'tiros_puerta': jugador.get('shots_on_target', 0),
-            'pases_clave': jugador.get('key_passes', 0),
-            'regates': jugador.get('dribbles_successful', 0),
-            'entradas': jugador.get('tackles', 0),
-            'intercepciones': jugador.get('interceptions', 0),
-            'tiros_por_partido': round(jugador.get('shots', 0) / partidos, 2),
-            'pases_clave_por_partido': round(jugador.get('key_passes', 0) / partidos, 2),
-            'regates_por_partido': round(jugador.get('dribbles_successful', 0) / partidos, 2)
-        }
-        
-        return estadisticas
-        
-    except Exception as e:
-        print(f"❌ Error: {e}")
-        return None
-
-
 # ==================== ELIMINATORIAS Y HISTORIAL ====================
 
 # Enfrentamientos directos entre selecciones
@@ -675,8 +617,6 @@ HTML_JUGADOR = """
 </html>
 """
 
-
-
 HTML_RESULTADOS = """
 <!DOCTYPE html>
 <html>
@@ -867,14 +807,6 @@ def api_partidos(seleccion):
     if partidos:
         return jsonify(partidos)
     return jsonify({'error': 'No se encontraron partidos'}), 404
-
-@app.route('/api/estadisticas/<nombre>')
-def api_estadisticas(nombre):
-    """Obtiene estadísticas avanzadas de un jugador"""
-    stats = obtener_estadisticas_jugador(nombre)
-    if stats:
-        return jsonify(stats)
-    return jsonify({'error': 'Jugador no encontrado'}), 404
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
