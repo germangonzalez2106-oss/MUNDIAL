@@ -564,7 +564,7 @@ HTML = """
     <title>Mundial 2026</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -606,6 +606,7 @@ HTML = """
         .big-number { font-size: 2em; font-weight: bold; color: #FFC107; }
         @media (max-width: 600px) { .grid-3 { grid-template-columns: 1fr; } .charts { grid-template-columns: 1fr; } }
     </style>
+    
 </head>
 <body>
 <div class="container">
@@ -672,106 +673,113 @@ HTML = """
 </div>
 
 <script>
-    let ratingChart, golesChart;
-    
+    // Función para cargar gráficos con Chart.js
     function cargarGraficos() {
+        console.log("Cargando gráficos...");
+        
         // Verificar que los canvas existen
         const canvasRating = document.getElementById('ratingChart');
         const canvasGoles = document.getElementById('golesChart');
         
         if (!canvasRating || !canvasGoles) {
             console.error('No se encontraron los canvas');
+            setTimeout(cargarGraficos, 500); // Reintentar en 0.5 segundos
             return;
         }
         
         fetch('/api/selecciones')
-            .then(r => r.json())
-            .then(data => {
-                // Filtrar solo selecciones con rating_promedio > 0
-                let seleccionesConRating = data.filter(s => s.rating_promedio > 0);
-                let topRating = [...seleccionesConRating].sort((a,b) => b.rating_promedio - a.rating_promedio).slice(0, 10);
+            .then(respuesta => respuesta.json())
+            .then(datos => {
+                console.log("Datos recibidos:", datos.length);
                 
-                let ctx1 = canvasRating.getContext('2d');
-                if (ratingChart) ratingChart.destroy();
-                ratingChart = new Chart(ctx1, {
+                // Filtrar solo selecciones con rating_promedio > 0
+                const equiposConRating = datos.filter(e => e.rating_promedio > 0);
+                const topRating = equiposConRating.sort((a, b) => b.rating_promedio - a.rating_promedio).slice(0, 10);
+                
+                // Top 10 por goles
+                const topGoles = [...datos].sort((a, b) => b.goles_total - a.goles_total).slice(0, 10);
+                
+                // Gráfico de Rating
+                const ctxRating = canvasRating.getContext('2d');
+                if (window.ratingChart) window.ratingChart.destroy();
+                window.ratingChart = new Chart(ctxRating, {
                     type: 'bar',
                     data: {
-                        labels: topRating.map(t => t.nombre),
+                        labels: topRating.map(e => e.nombre),
                         datasets: [{
                             label: 'Rating Promedio',
-                            data: topRating.map(t => t.rating_promedio),
-                            backgroundColor: 'rgba(76, 175, 80, 0.7)',
+                            data: topRating.map(e => e.rating_promedio),
+                            backgroundColor: 'rgba(76, 175, 80, 0.8)',
                             borderColor: 'rgba(76, 175, 80, 1)',
                             borderWidth: 1,
-                            borderRadius: 10
+                            borderRadius: 8
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: true,
                         plugins: {
-                            legend: { labels: { color: 'white' } },
-                            tooltip: { callbacks: { label: function(ctx) { return ctx.raw.toFixed(2); } } }
+                            legend: { labels: { color: '#fff' } },
+                            tooltip: { callbacks: { label: ctx => `${ctx.raw.toFixed(2)} puntos` } }
                         },
                         scales: {
                             y: { 
-                                ticks: { color: 'white' },
+                                ticks: { color: '#fff', stepSize: 0.5 },
                                 grid: { color: 'rgba(255,255,255,0.1)' },
-                                title: { display: true, text: 'Rating', color: 'white' }
+                                title: { display: true, text: 'Rating', color: '#fff' }
                             },
                             x: { 
-                                ticks: { color: 'white', rotation: 45, font: { size: 10 } },
+                                ticks: { color: '#fff', rotation: 45, font: { size: 11 } },
                                 grid: { display: false }
                             }
                         }
                     }
                 });
                 
-                // Top 10 por goles (sin filtrar)
-                let topGoles = [...data].sort((a,b) => b.goles_total - a.goles_total).slice(0, 10);
-                let ctx2 = canvasGoles.getContext('2d');
-                if (golesChart) golesChart.destroy();
-                golesChart = new Chart(ctx2, {
+                // Gráfico de Goles
+                const ctxGoles = canvasGoles.getContext('2d');
+                if (window.golesChart) window.golesChart.destroy();
+                window.golesChart = new Chart(ctxGoles, {
                     type: 'bar',
                     data: {
-                        labels: topGoles.map(t => t.nombre),
+                        labels: topGoles.map(e => e.nombre),
                         datasets: [{
                             label: 'Goles Totales',
-                            data: topGoles.map(t => t.goles_total),
-                            backgroundColor: 'rgba(33, 150, 243, 0.7)',
+                            data: topGoles.map(e => e.goles_total),
+                            backgroundColor: 'rgba(33, 150, 243, 0.8)',
                             borderColor: 'rgba(33, 150, 243, 1)',
                             borderWidth: 1,
-                            borderRadius: 10
+                            borderRadius: 8
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: true,
                         plugins: {
-                            legend: { labels: { color: 'white' } },
-                            tooltip: { callbacks: { label: function(ctx) { return ctx.raw.toFixed(0); } } }
+                            legend: { labels: { color: '#fff' } },
+                            tooltip: { callbacks: { label: ctx => `${ctx.raw.toFixed(0)} goles` } }
                         },
                         scales: {
                             y: { 
-                                ticks: { color: 'white' },
+                                ticks: { color: '#fff' },
                                 grid: { color: 'rgba(255,255,255,0.1)' },
-                                title: { display: true, text: 'Goles', color: 'white' }
+                                title: { display: true, text: 'Goles', color: '#fff' }
                             },
                             x: { 
-                                ticks: { color: 'white', rotation: 45, font: { size: 10 } },
+                                ticks: { color: '#fff', rotation: 45, font: { size: 11 } },
                                 grid: { display: false }
                             }
                         }
                     }
                 });
+                
+                console.log("Gráficos cargados correctamente");
             })
-            .catch(error => console.error('Error cargando gráficos:', error));
+            .catch(error => console.error('Error cargando datos:', error));
     }
     
     // Esperar a que el DOM esté completamente cargado
-    document.addEventListener('DOMContentLoaded', function() {
-        cargarGraficos();
-    });
+    document.addEventListener('DOMContentLoaded', cargarGraficos);
 </script>
     
     function calcularPronostico() {
@@ -842,6 +850,8 @@ HTML = """
     
     cargarGraficos();
     setTimeout(cargarCuotas, 500);
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </script>
 </body>
 </html>
