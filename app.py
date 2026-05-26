@@ -556,7 +556,6 @@ def pronostico(local, visitante):
     else: rec = f"🤝 Apostar al empate - Prob: {probE}%"
     return {'local': prob1, 'empate': probE, 'visitante': prob2, 'recomendacion': rec}
 
-# ==================== HTML ====================
 HTML = """
 <!DOCTYPE html>
 <html>
@@ -564,7 +563,6 @@ HTML = """
     <title>Mundial 2026</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -582,7 +580,7 @@ HTML = """
         .card { background: #0f3460; padding: 15px; border-radius: 15px; text-align: center; }
         .card h3 { font-size: 2em; color: #4CAF50; }
         .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .chart-box { background: #0f3460; padding: 15px; border-radius: 15px; }
+        .chart-box { background: #0f3460; padding: 15px; border-radius: 15px; text-align: center; }
         canvas { max-height: 250px; width: 100% !important; }
         select, button, input {
             padding: 10px 20px;
@@ -606,7 +604,6 @@ HTML = """
         .big-number { font-size: 2em; font-weight: bold; color: #FFC107; }
         @media (max-width: 600px) { .grid-3 { grid-template-columns: 1fr; } .charts { grid-template-columns: 1fr; } }
     </style>
-    
 </head>
 <body>
 <div class="container">
@@ -627,15 +624,15 @@ HTML = """
     </div>
     
     <div class="charts">
-    <div class="chart-box">
-        <h3>⭐ Top 10 - Rating Promedio</h3>
-        <canvas id="ratingChart" width="400" height="250" style="max-height: 250px; width: 100%;"></canvas>
+        <div class="chart-box">
+            <h3>⭐ Top 10 - Rating Promedio</h3>
+            <canvas id="ratingChart" width="400" height="250" style="max-height: 250px; width: 100%;"></canvas>
+        </div>
+        <div class="chart-box">
+            <h3>⚽ Top 10 - Goles Totales</h3>
+            <canvas id="golesChart" width="400" height="250" style="max-height: 250px; width: 100%;"></canvas>
+        </div>
     </div>
-    <div class="chart-box">
-        <h3>⚽ Top 10 - Goles Totales</h3>
-        <canvas id="golesChart" width="400" height="250" style="max-height: 250px; width: 100%;"></canvas>
-    </div>
-</div>
     
     <!-- Pronóstico -->
     <h2>🔮 Pronóstico</h2>
@@ -672,18 +669,19 @@ HTML = """
     </table>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // Función para cargar gráficos con Chart.js
+    let ratingChart, golesChart;
+    
     function cargarGraficos() {
         console.log("Cargando gráficos...");
         
-        // Verificar que los canvas existen
         const canvasRating = document.getElementById('ratingChart');
         const canvasGoles = document.getElementById('golesChart');
         
         if (!canvasRating || !canvasGoles) {
             console.error('No se encontraron los canvas');
-            setTimeout(cargarGraficos, 500); // Reintentar en 0.5 segundos
+            setTimeout(cargarGraficos, 500);
             return;
         }
         
@@ -692,17 +690,12 @@ HTML = """
             .then(datos => {
                 console.log("Datos recibidos:", datos.length);
                 
-                // Filtrar solo selecciones con rating_promedio > 0
                 const equiposConRating = datos.filter(e => e.rating_promedio > 0);
                 const topRating = equiposConRating.sort((a, b) => b.rating_promedio - a.rating_promedio).slice(0, 10);
-                
-                // Top 10 por goles
                 const topGoles = [...datos].sort((a, b) => b.goles_total - a.goles_total).slice(0, 10);
                 
-                // Gráfico de Rating
-                const ctxRating = canvasRating.getContext('2d');
-                if (window.ratingChart) window.ratingChart.destroy();
-                window.ratingChart = new Chart(ctxRating, {
+                if (ratingChart) ratingChart.destroy();
+                ratingChart = new Chart(canvasRating, {
                     type: 'bar',
                     data: {
                         labels: topRating.map(e => e.nombre),
@@ -710,36 +703,22 @@ HTML = """
                             label: 'Rating Promedio',
                             data: topRating.map(e => e.rating_promedio),
                             backgroundColor: 'rgba(76, 175, 80, 0.8)',
-                            borderColor: 'rgba(76, 175, 80, 1)',
-                            borderWidth: 1,
                             borderRadius: 8
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: true,
-                        plugins: {
-                            legend: { labels: { color: '#fff' } },
-                            tooltip: { callbacks: { label: ctx => `${ctx.raw.toFixed(2)} puntos` } }
-                        },
+                        plugins: { legend: { labels: { color: '#fff' } } },
                         scales: {
-                            y: { 
-                                ticks: { color: '#fff', stepSize: 0.5 },
-                                grid: { color: 'rgba(255,255,255,0.1)' },
-                                title: { display: true, text: 'Rating', color: '#fff' }
-                            },
-                            x: { 
-                                ticks: { color: '#fff', rotation: 45, font: { size: 11 } },
-                                grid: { display: false }
-                            }
+                            y: { ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                            x: { ticks: { color: '#fff', rotation: 45 } }
                         }
                     }
                 });
                 
-                // Gráfico de Goles
-                const ctxGoles = canvasGoles.getContext('2d');
-                if (window.golesChart) window.golesChart.destroy();
-                window.golesChart = new Chart(ctxGoles, {
+                if (golesChart) golesChart.destroy();
+                golesChart = new Chart(canvasGoles, {
                     type: 'bar',
                     data: {
                         labels: topGoles.map(e => e.nombre),
@@ -747,40 +726,24 @@ HTML = """
                             label: 'Goles Totales',
                             data: topGoles.map(e => e.goles_total),
                             backgroundColor: 'rgba(33, 150, 243, 0.8)',
-                            borderColor: 'rgba(33, 150, 243, 1)',
-                            borderWidth: 1,
                             borderRadius: 8
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: true,
-                        plugins: {
-                            legend: { labels: { color: '#fff' } },
-                            tooltip: { callbacks: { label: ctx => `${ctx.raw.toFixed(0)} goles` } }
-                        },
+                        plugins: { legend: { labels: { color: '#fff' } } },
                         scales: {
-                            y: { 
-                                ticks: { color: '#fff' },
-                                grid: { color: 'rgba(255,255,255,0.1)' },
-                                title: { display: true, text: 'Goles', color: '#fff' }
-                            },
-                            x: { 
-                                ticks: { color: '#fff', rotation: 45, font: { size: 11 } },
-                                grid: { display: false }
-                            }
+                            y: { ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                            x: { ticks: { color: '#fff', rotation: 45 } }
                         }
                     }
                 });
                 
                 console.log("Gráficos cargados correctamente");
             })
-            .catch(error => console.error('Error cargando datos:', error));
+            .catch(error => console.error('Error:', error));
     }
-    
-    // Esperar a que el DOM esté completamente cargado
-    document.addEventListener('DOMContentLoaded', cargarGraficos);
-</script>
     
     function calcularPronostico() {
         let local = document.getElementById('eqLocal').value;
@@ -848,271 +811,14 @@ HTML = """
             });
     }
     
-    cargarGraficos();
-    setTimeout(cargarCuotas, 500);
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    document.addEventListener('DOMContentLoaded', function() {
+        cargarGraficos();
+        setTimeout(cargarCuotas, 500);
+    });
 </script>
 </body>
 </html>
 """
-
-# ==================== PÁGINA ELIMINATORIAS ====================
-HTML_ELIMINATORIAS = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Eliminatorias - Mundial 2026</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box;}
-        body{font-family:'Segoe UI',Arial,sans-serif;background:#1a1a2e;color:white;padding:20px;}
-        .container{max-width:1000px;margin:0 auto;}
-        h1{text-align:center;color:#4CAF50;margin-bottom:20px;}
-        h2{margin:20px 0 10px;color:#FFC107;}
-        .nav{text-align:center;margin-bottom:20px;}
-        .nav a{color:#4CAF50;text-decoration:none;margin:0 10px;padding:8px 20px;background:#0f3460;border-radius:25px;}
-        .continente{background:#0f3460;border-radius:15px;padding:20px;margin-bottom:20px;}
-        .continente h3{color:#4CAF50;margin-bottom:15px;}
-        .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:10px 0;}
-        .badge{background:#1a1a2e;padding:8px;border-radius:10px;text-align:center;}
-        .badge.green{background:#1a3a2e;border-left:3px solid #4CAF50;}
-        table{width:100%;background:#1a1a2e;border-radius:10px;border-collapse:collapse;}
-        th,td{padding:8px;text-align:left;}
-        th{color:#4CAF50;}
-    </style>
-</head>
-<body>
-<div class="container">
-    <div class="nav"><a href="/">🏆 Ranking</a><a href="/jugador">🔍 Jugadores</a><a href="/eliminatorias">🌍 Eliminatorias</a></div>
-    <h1>🌍 Eliminatorias por Continente</h1>
-    
-    <div class="continente">
-        <h3>🏆 Sudamérica (CONMEBOL)</h3>
-        <div class="grid">
-            <div class="badge green">✅ Clasificados: Argentina, Ecuador, Uruguay, Colombia, Brasil, Paraguay</div>
-            <div class="badge">🔄 Repechaje: Bolivia</div>
-            <div class="badge">❌ Eliminados: Venezuela, Perú, Chile</div>
-        </div>
-        <p><strong>⭐ Máximo goleador:</strong> Lionel Messi (8 goles)</p>
-        <p><strong>📅 Fecha final:</strong> 10 de septiembre de 2025</p>
-        <h4>Tabla de posiciones:</h4>
-        <table><th>Pos</th><th>Equipo</th><th>Pts</th></tr>
-        <tr><td>1</td><td>Argentina</td><td>38</td></tr>
-        <tr><td>2</td><td>Ecuador</td><td>29</td></tr>
-        <tr><td>3</td><td>Colombia</td><td>28</td></tr>
-        <tr><td>4</td><td>Uruguay</td><td>28</td></tr>
-        <tr><td>5</td><td>Brasil</td><td>28</td></tr>
-        <tr><td>6</td><td>Paraguay</td><td>25</td></tr>
-        </table>
-    </div>
-    
-    <div class="continente">
-        <h3>⚽ Europa (UEFA)</h3>
-        <div class="grid">
-            <div class="badge green">✅ Clasificados directos: España, Francia, Alemania, Inglaterra, Países Bajos, Croacia, Portugal, Escocia, Austria, Bélgica, Suiza, Noruega</div>
-            <div class="badge">🔄 Repechaje: Bosnia, República Checa, Suecia, Turquía</div>
-        </div>
-        <p><strong>📅 Fecha final:</strong> 31 de marzo de 2026</p>
-    </div>
-    
-    <div class="continente">
-        <h3>🦁 África (CAF)</h3>
-        <div class="grid">
-            <div class="badge green">✅ Clasificados: Sudáfrica, Egipto, Marruecos, Argelia, Costa de Marfil, Ghana</div>
-        </div>
-        <p><strong>📅 Fecha final:</strong> 14 de octubre de 2025</p>
-        <p><strong>🎉 Destacado:</strong> Sudáfrica vuelve a un Mundial después de 16 años</p>
-    </div>
-    
-    <div class="continente">
-        <h3>🐉 Asia (AFC)</h3>
-        <div class="grid">
-            <div class="badge green">✅ Clasificados: Corea del Sur, Japón, Irán, Australia, Arabia Saudita, Uzbekistán, Qatar, Jordania</div>
-        </div>
-        <p><strong>🎉 Destacado:</strong> Corea del Sur clasificó invicta (20 goles a favor, 1 en contra)</p>
-    </div>
-    
-    <div class="continente">
-        <h3>🌎 Norteamérica (CONCACAF)</h3>
-        <div class="grid">
-            <div class="badge green">✅ Clasificados: México, Canadá, Estados Unidos, Panamá</div>
-        </div>
-        <p><strong>📅 Fecha final:</strong> 18 de noviembre de 2025</p>
-        <p><strong>🎉 Destacado:</strong> Canadá y México clasificaron como anfitriones</p>
-    </div>
-</div>
-</body>
-</html>
-"""
-
-# ==================== PÁGINA JUGADORES ====================
-HTML_JUGADOR = """
-<!DOCTYPE html>
-<html>
-<head><title>Buscador de Jugadores</title><meta charset="UTF-8">
-<style>
-    *{margin:0;padding:0;box-sizing:border-box;}
-    body{font-family:'Segoe UI',Arial,sans-serif;background:#1a1a2e;color:white;padding:20px;}
-    .container{max-width:600px;margin:0 auto;}
-    h1{text-align:center;color:#4CAF50;margin-bottom:20px;}
-    .nav{text-align:center;margin-bottom:20px;}
-    .nav a{color:#4CAF50;text-decoration:none;margin:0 10px;padding:8px 20px;background:#0f3460;border-radius:25px;}
-    input,button{padding:10px 20px;border-radius:25px;border:none;}
-    input{background:#0f3460;color:white;flex:1;}
-    button{background:#4CAF50;color:white;cursor:pointer;}
-    .flex{display:flex;gap:10px;margin:20px 0;}
-    .results{background:#0f3460;border-radius:15px;padding:20px;margin-top:20px;display:none;}
-    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:15px 0;}
-    .card{background:#1a1a2e;padding:15px;border-radius:10px;text-align:center;}
-    .card h3{font-size:2em;color:#4CAF50;}
-</style>
-</head>
-<body>
-<div class="container">
-    <div class="nav"><a href="/">🏆 Ranking</a><a href="/jugador">🔍 Jugadores</a><a href="/eliminatorias">🌍 Eliminatorias</a></div>
-    <h1>🔍 Buscador de Jugadores</h1>
-    <div class="flex"><input type="text" id="searchInput" placeholder="Ej: Messi, Ronaldo..."><button onclick="buscar()">Buscar</button></div>
-    <div id="resultado" class="results"></div>
-</div>
-<script>
-    function buscar() {
-        let nombre = document.getElementById('searchInput').value;
-        if (nombre.length<2){alert("Mínimo 2 caracteres");return;}
-        fetch('/api/jugador/buscar?nombre='+encodeURIComponent(nombre)).then(r=>r.json()).then(data=>{
-            let div=document.getElementById('resultado');
-            if(data.error){div.innerHTML='<p>❌ '+data.error+'</p>';}
-            else{
-                let html='<h3>'+data.player+'</h3><div class="grid"><div class="card"><h3>'+data.goals+'</h3><p>Goles</p></div>';
-                html+='<div class="card"><h3>'+data.assists+'</h3><p>Asistencias</p></div>';
-                html+='<div class="card"><h3>'+data.rating+'</h3><p>Rating</p></div></div>';
-                html+='<p><strong>Equipo:</strong> '+data.team+' ('+data.league+')</p>';
-                div.innerHTML=html;
-            }
-            div.style.display='block';
-        });
-    }
-</script>
-</body>
-</html>
-"""
-
-HTML_RESULTADOS = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Resultados de Eliminatorias</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box;}
-        body{font-family:'Segoe UI',Arial,sans-serif;background:#1a1a2e;color:white;padding:20px;}
-        .container{max-width:1000px;margin:0 auto;}
-        h1{text-align:center;color:#4CAF50;margin-bottom:20px;}
-        .nav{text-align:center;margin-bottom:20px;}
-        .nav a{color:#4CAF50;text-decoration:none;margin:0 10px;padding:8px 20px;background:#0f3460;border-radius:25px;}
-        select, button{padding:10px 20px;border-radius:25px;border:none;background:#0f3460;color:white;cursor:pointer;}
-        button{background:#4CAF50;}
-        .flex{display:flex;gap:10px;justify-content:center;margin:20px 0;flex-wrap:wrap;}
-        .partidos{background:#0f3460;border-radius:15px;padding:20px;margin-top:20px;}
-        .partido{border-bottom:1px solid #2a2a4e;padding:15px;margin-bottom:10px;}
-        .partido:last-child{border-bottom:none;}
-        .fecha{color:#aaa;font-size:12px;}
-        .resultado{font-size:1.5em;font-weight:bold;margin:10px 0;}
-        .resultado.ganador{color:#4CAF50;}
-        .resultado.perdedor{color:#f44336;}
-        .resultado.empate{color:#FFC107;}
-        .goleadores{color:#aaa;font-size:12px;margin-top:5px;}
-    </style>
-</head>
-<body>
-<div class="container">
-    <div class="nav">
-        <a href="/">🏆 Ranking</a>
-        <a href="/jugador">🔍 Jugadores</a>
-        <a href="/eliminatorias">🌍 Eliminatorias</a>
-        <a href="/resultados">📋 Resultados</a>
-    </div>
-    <h1>📋 Resultados de Eliminatorias</h1>
-    
-    <div class="flex">
-        <select id="seleccion">
-            <option value="">Selecciona una selección</option>
-            {% for s in selecciones %}
-            <option value="{{ s.nombre }}">{{ s.nombre }}</option>
-            {% endfor %}
-        </select>
-        <button onclick="cargarPartidos()">Ver Partidos</button>
-    </div>
-    
-    <div id="resultados" class="partidos" style="display:none;"></div>
-</div>
-
-<script>
-    function cargarPartidos() {
-        let seleccion = document.getElementById('seleccion').value;
-        if (!seleccion) { alert("Selecciona una selección"); return; }
-        
-        let div = document.getElementById('resultados');
-        div.innerHTML = '<p>Cargando partidos...</p>';
-        div.style.display = 'block';
-        
-        fetch('/api/partidos/' + encodeURIComponent(seleccion))
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    div.innerHTML = '<p>❌ ' + data.error + '</p>';
-                    return;
-                }
-                
-                let html = `<h2>📊 ${seleccion}</h2>`;
-                let ganados = 0, empatados = 0, perdidos = 0, gf = 0, gc = 0;
-                
-                for (let p of data) {
-                    gf += p.goles_favor;
-                    gc += p.goles_contra;
-                    if (p.goles_favor > p.goles_contra) ganados++;
-                    else if (p.goles_favor < p.goles_contra) perdidos++;
-                    else empatados++;
-                    
-                    let clase = '';
-                    if (p.goles_favor > p.goles_contra) clase = 'ganador';
-                    else if (p.goles_favor < p.goles_contra) clase = 'perdedor';
-                    else clase = 'empate';
-                    
-                    let localStr = p.local ? '🏠 ' + seleccion : seleccion;
-                    let visitanteStr = p.local ? p.rival : '✈️ ' + p.rival;
-                    
-                    html += `<div class="partido">
-                        <div class="fecha">📅 ${p.fecha} | ${p.competicion}</div>
-                        <div class="resultado ${clase}">${localStr} ${p.goles_favor} - ${p.goles_contra} ${visitanteStr}</div>`;
-                    
-                    if (p.goleadores && p.goleadores.length > 0) {
-                        html += `<div class="goleadores">⚽ Goleadores: ${p.goleadores.join(', ')}</div>`;
-                    }
-                    html += `</div>`;
-                }
-                
-                html += `<div style="margin-top:20px;background:#1a1a2e;padding:15px;border-radius:10px;">
-                    <h3>📊 Resumen</h3>
-                    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;text-align:center;margin-top:10px;">
-                        <div><span class="big-number">${ganados}</span><br>🏆 Victorias</div>
-                        <div><span class="big-number">${empatados}</span><br>🤝 Empates</div>
-                        <div><span class="big-number">${perdidos}</span><br>❌ Derrotas</div>
-                        <div><span class="big-number">${gf}</span><br>⚽ Goles a favor</div>
-                        <div><span class="big-number">${gc}</span><br>🛡️ Goles en contra</div>
-                    </div>
-                </div>`;
-                
-                div.innerHTML = html;
-            });
-    }
-</script>
-</body>
-</html>
-"""
-
 # ==================== RUTAS ====================
 
 @app.route('/')
