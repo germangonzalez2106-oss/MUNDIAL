@@ -563,6 +563,7 @@ HTML = """
     <title>Mundial 2026</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -579,9 +580,9 @@ HTML = """
         .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 30px; }
         .card { background: #0f3460; padding: 15px; border-radius: 15px; text-align: center; }
         .card h3 { font-size: 2em; color: #4CAF50; }
-        .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .chart-box { background: #0f3460; padding: 15px; border-radius: 15px; text-align: center; }
-        canvas { max-height: 250px; width: 100% !important; }
+        .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .chart-box { background: #0f3460; padding: 20px; border-radius: 15px; text-align: center; }
+        canvas { max-height: 300px; width: 100% !important; }
         select, button, input {
             padding: 10px 20px;
             border-radius: 25px;
@@ -602,7 +603,9 @@ HTML = """
         .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 15px 0; }
         .stat-card { background: #1a1a2e; padding: 15px; border-radius: 10px; text-align: center; }
         .big-number { font-size: 2em; font-weight: bold; color: #FFC107; }
-        @media (max-width: 600px) { .grid-3 { grid-template-columns: 1fr; } .charts { grid-template-columns: 1fr; } }
+        .odds-card { background: #1a1a2e; border-radius: 10px; padding: 15px; margin-bottom: 10px; }
+        .odds-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+        @media (max-width: 600px) { .grid-3 { grid-template-columns: 1fr; } .charts { grid-template-columns: 1fr; } .odds-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -626,11 +629,11 @@ HTML = """
     <div class="charts">
         <div class="chart-box">
             <h3>⭐ Top 10 - Rating Promedio</h3>
-            <canvas id="ratingChart" width="400" height="250" style="max-height: 250px; width: 100%;"></canvas>
+            <canvas id="ratingChart" width="500" height="300" style="width:100%; height:auto; max-height:300px;"></canvas>
         </div>
         <div class="chart-box">
             <h3>⚽ Top 10 - Goles Totales</h3>
-            <canvas id="golesChart" width="400" height="250" style="max-height: 250px; width: 100%;"></canvas>
+            <canvas id="golesChart" width="500" height="300" style="width:100%; height:auto; max-height:300px;"></canvas>
         </div>
     </div>
     
@@ -669,80 +672,35 @@ HTML = """
     </table>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     let ratingChart, golesChart;
     
     function cargarGraficos() {
-        console.log("Cargando gráficos...");
-        
         const canvasRating = document.getElementById('ratingChart');
         const canvasGoles = document.getElementById('golesChart');
         
-        if (!canvasRating || !canvasGoles) {
-            console.error('No se encontraron los canvas');
-            setTimeout(cargarGraficos, 500);
-            return;
-        }
+        if (!canvasRating || !canvasGoles) return;
         
         fetch('/api/selecciones')
-            .then(respuesta => respuesta.json())
-            .then(datos => {
-                console.log("Datos recibidos:", datos.length);
-                
-                const equiposConRating = datos.filter(e => e.rating_promedio > 0);
-                const topRating = equiposConRating.sort((a, b) => b.rating_promedio - a.rating_promedio).slice(0, 10);
-                const topGoles = [...datos].sort((a, b) => b.goles_total - a.goles_total).slice(0, 10);
+            .then(r => r.json())
+            .then(data => {
+                const topRating = [...data].filter(s => s.rating_promedio > 0).sort((a,b) => b.rating_promedio - a.rating_promedio).slice(0,10);
+                const topGoles = [...data].sort((a,b) => b.goles_total - a.goles_total).slice(0,10);
                 
                 if (ratingChart) ratingChart.destroy();
                 ratingChart = new Chart(canvasRating, {
                     type: 'bar',
-                    data: {
-                        labels: topRating.map(e => e.nombre),
-                        datasets: [{
-                            label: 'Rating Promedio',
-                            data: topRating.map(e => e.rating_promedio),
-                            backgroundColor: 'rgba(76, 175, 80, 0.8)',
-                            borderRadius: 8
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        plugins: { legend: { labels: { color: '#fff' } } },
-                        scales: {
-                            y: { ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } },
-                            x: { ticks: { color: '#fff', rotation: 45 } }
-                        }
-                    }
+                    data: { labels: topRating.map(t=>t.nombre), datasets: [{ label: 'Rating Promedio', data: topRating.map(t=>t.rating_promedio), backgroundColor: 'rgba(76,175,80,0.8)', borderRadius: 8 }] },
+                    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: '#fff' } } }, scales: { y: { ticks: { color: '#fff' } }, x: { ticks: { color: '#fff', rotation: 45 } } } }
                 });
                 
                 if (golesChart) golesChart.destroy();
                 golesChart = new Chart(canvasGoles, {
                     type: 'bar',
-                    data: {
-                        labels: topGoles.map(e => e.nombre),
-                        datasets: [{
-                            label: 'Goles Totales',
-                            data: topGoles.map(e => e.goles_total),
-                            backgroundColor: 'rgba(33, 150, 243, 0.8)',
-                            borderRadius: 8
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        plugins: { legend: { labels: { color: '#fff' } } },
-                        scales: {
-                            y: { ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } },
-                            x: { ticks: { color: '#fff', rotation: 45 } }
-                        }
-                    }
+                    data: { labels: topGoles.map(t=>t.nombre), datasets: [{ label: 'Goles Totales', data: topGoles.map(t=>t.goles_total), backgroundColor: 'rgba(33,150,243,0.8)', borderRadius: 8 }] },
+                    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: '#fff' } } }, scales: { y: { ticks: { color: '#fff' } }, x: { ticks: { color: '#fff', rotation: 45 } } } }
                 });
-                
-                console.log("Gráficos cargados correctamente");
-            })
-            .catch(error => console.error('Error:', error));
+            });
     }
     
     function calcularPronostico() {
@@ -756,32 +714,24 @@ HTML = """
         fetch('/api/pronostico?local='+encodeURIComponent(local)+'&visitante='+encodeURIComponent(visitante))
             .then(r=>r.json())
             .then(data=>{
-                div.innerHTML = `<div class="grid-3">
-                    <div class="stat-card"><div class="big-number">${data.local}%</div><div>🏠 ${local}</div></div>
-                    <div class="stat-card"><div class="big-number">${data.empate}%</div><div>🤝 Empate</div></div>
-                    <div class="stat-card"><div class="big-number">${data.visitante}%</div><div>✈️ ${visitante}</div></div>
-                </div><div style="background:#1a1a2e;padding:15px;border-radius:10px;text-align:center">${data.recomendacion}</div>`;
+                div.innerHTML = `<div class="grid-3"><div class="stat-card"><div class="big-number">${data.local}%</div><div>🏠 ${local}</div></div><div class="stat-card"><div class="big-number">${data.empate}%</div><div>🤝 Empate</div></div><div class="stat-card"><div class="big-number">${data.visitante}%</div><div>✈️ ${visitante}</div></div></div><div style="background:#1a1a2e;padding:15px;border-radius:10px;text-align:center">${data.recomendacion}</div>`;
             });
     }
     
     function cargarCuotas() {
         let div = document.getElementById('cuotasResultado');
-        div.innerHTML = '<p>Cargando...</p>';
-        fetch('/api/odds').then(r=>r.json()).then(data=>{
-            if (!data.success || data.games.length===0) { div.innerHTML = '<p>No hay partidos</p>'; return; }
-            let html = '';
-            for (let g of data.games.slice(0,8)) {
-                html += `<div style="background:#0f3460;margin-bottom:10px;padding:15px;border-radius:10px;">
-                    <strong>${g.home_team} 🆚 ${g.away_team}</strong>
-                    <div class="grid-3" style="margin-top:10px">
-                        <div class="stat-card">🏠 Local<br><span class="big-number">${g.cuotas.home>0?g.cuotas.home.toFixed(2):'N/A'}</span><br><small>${g.mejores_casas.home}</small></div>
-                        <div class="stat-card">🤝 Empate<br><span class="big-number">${g.cuotas.draw>0?g.cuotas.draw.toFixed(2):'N/A'}</span><br><small>${g.mejores_casas.draw}</small></div>
-                        <div class="stat-card">✈️ Visitante<br><span class="big-number">${g.cuotas.away>0?g.cuotas.away.toFixed(2):'N/A'}</span><br><small>${g.mejores_casas.away}</small></div>
-                    </div>
-                </div>`;
-            }
-            div.innerHTML = html;
-        }).catch(e=>div.innerHTML='<p>Error</p>');
+        div.innerHTML = '<p>Cargando cuotas...</p>';
+        fetch('/api/odds')
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success || data.games.length === 0) { div.innerHTML = '<p>No hay partidos disponibles</p>'; return; }
+                let html = '';
+                for (let g of data.games.slice(0,10)) {
+                    html += `<div class="odds-card"><strong>${g.home_team} 🆚 ${g.away_team}</strong><div class="odds-grid"><div class="stat-card">🏠 Local<br><span class="big-number">${g.cuotas.home > 0 ? g.cuotas.home.toFixed(2) : 'N/A'}</span><br><small>${g.mejores_casas.home}</small></div><div class="stat-card">🤝 Empate<br><span class="big-number">${g.cuotas.draw > 0 ? g.cuotas.draw.toFixed(2) : 'N/A'}</span><br><small>${g.mejores_casas.draw}</small></div><div class="stat-card">✈️ Visitante<br><span class="big-number">${g.cuotas.away > 0 ? g.cuotas.away.toFixed(2) : 'N/A'}</span><br><small>${g.mejores_casas.away}</small></div></div></div>`;
+                }
+                div.innerHTML = html;
+            })
+            .catch(e => div.innerHTML = '<p>Error cargando cuotas</p>');
     }
     
     function cargarHistorial() {
@@ -795,17 +745,8 @@ HTML = """
             .then(r=>r.json())
             .then(data=>{
                 if (data.error) { div.innerHTML = '<p>'+data.error+'</p>'; return; }
-                let html = `<div style="background:#0f3460;border-radius:15px;padding:20px">
-                    <h3>📊 ${local} vs ${visitante}</h3>
-                    <div class="grid-3">
-                        <div class="stat-card">🏆 Total<br><span class="big-number">${data.total}</span><br>partidos</div>
-                        <div class="stat-card">⚽ Goles ${local}<br><span class="big-number">${data.goles_local}</span></div>
-                        <div class="stat-card">⚽ Goles ${visitante}<br><span class="big-number">${data.goles_visitante}</span></div>
-                    </div>
-                    <h4>📋 Partidos</h4><table style="width:100%"><thead><tr><th>Fecha</th><th>Competición</th><th>Resultado</th></tr></thead><tbody>`;
-                for (let p of data.partidos) {
-                    html += `<tr><td>${p.fecha}</td><td>${p.competicion}</td><td>${p.resultado}</td></tr>`;
-                }
+                let html = `<div style="background:#0f3460;border-radius:15px;padding:20px"><h3>📊 ${local} vs ${visitante}</h3><div class="grid-3"><div class="stat-card">🏆 Total<br><span class="big-number">${data.total}</span><br>partidos</div><div class="stat-card">⚽ Goles ${local}<br><span class="big-number">${data.goles_local}</span></div><div class="stat-card">⚽ Goles ${visitante}<br><span class="big-number">${data.goles_visitante}</span></div></div><h4>📋 Partidos</h4><table style="width:100%"><thead><tr><th>Fecha</th><th>Competición</th><th>Resultado</th></tr></thead><tbody>`;
+                for (let p of data.partidos) { html += `<tr><td>${p.fecha}</td><td>${p.competicion}</td><td>${p.resultado}</td></tr>`; }
                 html += `</tbody></table></div>`;
                 div.innerHTML = html;
             });
