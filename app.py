@@ -16,6 +16,292 @@ except Exception as e:
     print(f"❌ Error: {e}")
     coleccion = None
 
+# ==================== SISTEMA DE CACHÉ PARA API-FOOTBALL ====================
+from datetime import datetime, timedelta
+import hashlib
+
+# Colección para caché de jugadores
+# Asegúrate de crear esta colección en MongoDB
+cache_coleccion = db['cache_jugadores'] if coleccion is not None else None
+
+def generar_cache_key(nombre_jugador):
+    """Genera una clave única para cada jugador"""
+    return hashlib.md5(nombre_jugador.lower().encode()).hexdigest()
+
+def obtener_desde_cache(nombre_jugador):
+    """
+    Obtiene un jugador desde la caché si existe y no ha expirado
+    """
+    if cache_coleccion is None:
+        return None
+    
+    cache_key = generar_cache_key(nombre_jugador)
+    
+    try:
+        cache_entry = cache_coleccion.find_one({'key': cache_key})
+        
+        if not cache_entry:
+            print(f"📦 Caché: '{nombre_jugador}' no encontrado en caché")
+            return None
+        
+        # Verificar si ha expirado (7 días)
+        last_update = cache_entry.get('last_update')
+        if last_update:
+            fecha_update = datetime.fromisoformat(last_update)
+            if datetime.now() - fecha_update > timedelta(days=7):
+                print(f"⏰ Caché: '{nombre_jugador}' expirado (más de 7 días)")
+                # Eliminar entrada expirada
+                cache_coleccion.delete_one({'key': cache_key})
+                return None
+        
+        print(f"✅ Caché: '{nombre_jugador}' encontrado (actualizado: {last_update})")
+        return cache_entry.get('data')
+        
+    except Exception as e:
+        print(f"❌ Error leyendo caché: {e}")
+        return None
+
+def guardar_en_cache(nombre_jugador, datos_jugador):
+    """
+    Guarda un jugador en la caché
+    """
+    if cache_coleccion is None or datos_jugador is None:
+        return
+    
+    cache_key = generar_cache_key(nombre_jugador)
+    
+    try:
+        cache_entry = {
+            'key': cache_key,
+            'nombre': nombre_jugador,
+            'data': datos_jugador,
+            'last_update': datetime.now().isoformat(),
+            'expira_en': (datetime.now() + timedelta(days=7)).isoformat()
+        }
+        
+        # Reemplazar si ya existe
+        cache_coleccion.update_one(
+            {'key': cache_key},
+            {'$set': cache_entry},
+            upsert=True
+        )
+        print(f"💾 Caché: '{nombre_jugador}' guardado (expira en 7 días)")
+        
+    except Exception as e:
+        print(f"❌ Error guardando en caché: {e}")
+
+def obtener_estadisticas_con_cache(nombre_jugador, force_refresh=False):
+    """
+    Obtiene estadísticas de un jugador usando caché
+    Primero busca en caché, si no está o force_refresh=True, consulta API
+    """
+    if not force_refresh:
+        # Intentar obtener desde caché
+        datos_cache = obtener_desde_cache(nombre_jugador)
+        if datos_cache:
+            datos_cache['fuente'] = 'Caché (datos reales)'
+            return datos_cache
+    
+    # Si no está en caché o se fuerza actualización, consultar API
+    print(f"🌐 Consultando API-Football para '{nombre_jugador}'...")
+    datos_reales = obtener_estadisticas_reales_jugador(nombre_jugador)
+    
+    if datos_reales:
+        # Guardar en caché para futuras consultas
+        guardar_en_cache(nombre_jugador, datos_reales)
+        datos_reales['fuente'] = 'API-Football (datos reales)'
+        return datos_reales
+    
+    return None
+
+def limpiar_cache_expirada():
+    """Elimina todas las entradas de caché expiradas"""
+    if cache_coleccion is None:
+        return
+    
+    try:
+        resultado = cache_coleccion.delete_many({
+            'expira_en': {'$lt': datetime.now().isoformat()}
+        })
+        print(f"🧹 Caché limpiada: {resultado.deleted_count} entradas expiradas eliminadas")
+    except Exception as e:
+        print(f"❌ Error limpiando caché: {e}")
+
+def estadisticas_cache():
+    """Muestra estadísticas del caché"""
+    if cache_coleccion is None:
+        return
+    
+    total = cache_coleccion.count_documents({})
+    print(f"📊 CACHÉ STATS:")
+    print(f"   • Total jugadores en caché: {total}")
+    
+    # Mostrar últimos 5 guardados
+    ultimos = cache_coleccion.find().sort('last_update', -1).limit(5)
+    print(f"   • Últimos guardados:")
+    for doc in ultimos:
+        print(f"     - {doc['nombre']} (actualizado: {doc['last_update'][:10]})")
+
+# ==================== API-FOOTBALL - DATOS REALES ====================
+import requests
+
+API_FOOTBALL_KEY = "2d815f1ac9a12c9296b3f9c3f5d30f7c"
+API_FOOTBALL_URL = "https://v3.football.api-sports.io"
+
+def obtener_estadisticas_reales_jugador(nombre_jugador):
+    """
+    Obtiene estadísticas REALES de un jugador desde API-Football
+    """
+    print(f"🔍 Buscando '{nombre_jugador}' en API-Football...")
+    
+    headers = {
+        "x-apisports-key": API_FOOTBALL_KEY,
+        "x-apisports-host": "v3.football.api-sports.io"
+    }
+    
+    try:
+        url_search = f"{API_FOOTBALL_URL}/players"
+        params_search = {"search": nombre_jugador}
+        
+        response = requests.get(url_search, headers=headers, params=params_search)
+        data = response.json()
+        
+        remaining = response.headers.get('x-ratelimit-requests-remaining', 'N/A')
+        print(f"📊 Peticiones restantes hoy: {remaining}")
+        
+        if data.get('results', 0) == 0:
+            print(f"❌ No se encontró a '{nombre_jugador}'")
+            return None
+        
+        jugador = data['response'][0]
+        player_id = jugador['player']['id']
+        print(f"✅ Encontrado: {jugador['player']['name']} (ID: {player_id})")
+        
+        # Obtener estadísticas detalladas
+        url_stats = f"{API_FOOTBALL_URL}/players"
+        params_stats = {"id": player_id, "season": 2025}
+        
+        response_stats = requests.get(url_stats, headers=headers, params=params_stats)
+        data_stats = response_stats.json()
+        
+        if data_stats.get('results', 0) == 0:
+            return {
+                'nombre': jugador['player']['name'],
+                'equipo': 'N/A',
+                'edad': jugador['player'].get('age', 'N/A'),
+                'posicion': jugador['player'].get('position', 'N/A'),
+                'partidos': 0,
+                'goles': 0,
+                'asistencias': 0,
+                'tiros_por_partido': 0,
+                'pases_clave_por_partido': 0,
+                'regates_por_partido': 0,
+                'fuente': 'API-Football'
+            }
+        
+        stats = data_stats['response'][0]['statistics'][0] if data_stats['response'] else {}
+        partidos = stats.get('games', {}).get('appearences', 1)
+        if partidos == 0:
+            partidos = 1
+        
+        return {
+            'nombre': jugador['player']['name'],
+            'equipo': stats.get('team', {}).get('name', 'N/A'),
+            'edad': jugador['player']['age'],
+            'posicion': jugador['player']['position'],
+            'partidos': partidos,
+            'goles': stats.get('goals', {}).get('total', 0),
+            'asistencias': stats.get('goals', {}).get('assists', 0),
+            'tiros_totales': stats.get('shots', {}).get('total', 0),
+            'tiros_puerta': stats.get('shots', {}).get('on', 0),
+            'tiros_por_partido': round(stats.get('shots', {}).get('total', 0) / partidos, 2),
+            'pases_clave': stats.get('passes', {}).get('key', 0),
+            'pases_clave_por_partido': round(stats.get('passes', {}).get('key', 0) / partidos, 2),
+            'regates': stats.get('dribbles', {}).get('success', 0),
+            'regates_por_partido': round(stats.get('dribbles', {}).get('success', 0) / partidos, 2),
+            'entradas': stats.get('tackles', {}).get('total', 0),
+            'intercepciones': stats.get('tackles', {}).get('interceptions', 0),
+            'rating': stats.get('rating', 0),
+            'fuente': 'API-Football (datos reales)'
+        }
+        
+    except Exception as e:
+        print(f"❌ Error en API-Football: {e}")
+        return None
+        
+        # Tomar las estadísticas (pueden ser de varias ligas)
+        stats = data_stats['response'][0]['statistics'][0] if data_stats['response'] else {}
+        
+        # Calcular promedios por partido
+        partidos = stats.get('games', {}).get('appearences', 1)
+        if partidos == 0:
+            partidos = 1
+        
+        return {
+            'nombre': jugador['player']['name'],
+            'equipo': stats.get('team', {}).get('name', 'N/A'),
+            'edad': jugador['player']['age'],
+            'posicion': jugador['player']['position'],
+            'partidos': partidos,
+            'goles': stats.get('goals', {}).get('total', 0),
+            'asistencias': stats.get('goals', {}).get('assists', 0),
+            'tiros_totales': stats.get('shots', {}).get('total', 0),
+            'tiros_puerta': stats.get('shots', {}).get('on', 0),
+            'tiros_por_partido': round(stats.get('shots', {}).get('total', 0) / partidos, 2),
+            'pases_clave': stats.get('passes', {}).get('key', 0),
+            'pases_clave_por_partido': round(stats.get('passes', {}).get('key', 0) / partidos, 2),
+            'regates': stats.get('dribbles', {}).get('success', 0),
+            'regates_por_partido': round(stats.get('dribbles', {}).get('success', 0) / partidos, 2),
+            'entradas': stats.get('tackles', {}).get('total', 0),
+            'intercepciones': stats.get('tackles', {}).get('interceptions', 0),
+            'rating': stats.get('rating', 0),
+            'fuente': 'API-Football (datos reales)'
+        }
+        
+    except Exception as e:
+        print(f"❌ Error en API-Football: {e}")
+        return None
+
+def obtener_partidos_hoy():
+    """
+    Obtiene los partidos de fútbol de hoy
+    """
+    headers = {
+        "x-apisports-key": API_FOOTBALL_KEY,
+        "x-apisports-host": "v3.football.api-sports.io"
+    }
+    
+    try:
+        from datetime import datetime
+        fecha = datetime.now().strftime("%Y-%m-%d")
+        
+        url = f"{API_FOOTBALL_URL}/fixtures"
+        params = {"date": fecha}
+        
+        response = requests.get(url, headers=headers, params=params)
+        data = response.json()
+        
+        if data.get('results', 0) == 0:
+            return []
+        
+        partidos = []
+        for p in data['response'][:10]:
+            partidos.append({
+                'home_team': p['teams']['home']['name'],
+                'away_team': p['teams']['away']['name'],
+                'home_logo': p['teams']['home']['logo'],
+                'away_logo': p['teams']['away']['logo'],
+                'status': p['fixture']['status']['short'],
+                'time': p['fixture']['date']
+            })
+        
+        return partidos
+        
+    except Exception as e:
+        print(f"Error obteniendo partidos: {e}")
+        return []
+
+
 # ==================== JUGADORES MANUALES ====================
 JUGADORES_MANUALES = {
     "messi": {"player": "Lionel Messi", "team": "Inter Miami", "league": "MLS", "goals": 12, "assists": 8, "rating": 8.2},
@@ -734,7 +1020,6 @@ HTML_RESULTADOS = """
 
 # ==================== RUTAS ====================
 
-
 @app.route('/')
 def index():
     selecciones = obtener_selecciones()
@@ -748,6 +1033,11 @@ def jugador():
 @app.route('/eliminatorias')
 def eliminatorias():
     return render_template_string(HTML_ELIMINATORIAS)
+
+@app.route('/resultados')
+def resultados():
+    selecciones = obtener_selecciones()
+    return render_template_string(HTML_RESULTADOS, selecciones=selecciones)
 
 @app.route('/api/selecciones')
 def api_selecciones():
@@ -796,17 +1086,56 @@ def api_buscar_jugador():
             return jsonify(v)
     return jsonify({'error': 'No encontrado'}), 404
 
-@app.route('/resultados')
-def resultados():
-    selecciones = obtener_selecciones()
-    return render_template_string(HTML_RESULTADOS, selecciones=selecciones)
-
 @app.route('/api/partidos/<seleccion>')
 def api_partidos(seleccion):
     partidos = obtener_partidos_por_seleccion(seleccion)
     if partidos:
         return jsonify(partidos)
     return jsonify({'error': 'No se encontraron partidos'}), 404
+
+@app.route('/api/estadisticas/<nombre>')
+def api_estadisticas(nombre):
+    """Obtiene estadísticas de un jugador usando caché"""
+    datos = obtener_estadisticas_con_cache(nombre)
+    
+    if datos:
+        return jsonify(datos)
+    
+    # Fallback a datos manuales
+    nombre_limpio = nombre.lower()
+    for key, data in JUGADORES_MANUALES.items():
+        if key in nombre_limpio or nombre_limpio in key:
+            return jsonify({
+                'nombre': data['player'],
+                'equipo': data['team'],
+                'liga': data['league'],
+                'goles': data['goals'],
+                'asistencias': data['assists'],
+                'rating': data['rating'],
+                'tiros_por_partido': data.get('tiros_por_partido', 0),
+                'pases_clave_por_partido': data.get('pases_clave_por_partido', 0),
+                'regates_por_partido': data.get('regates_por_partido', 0),
+                'fuente': 'Datos manuales (fallback)'
+            })
+    
+    return jsonify({'error': 'Jugador no encontrado'}), 404
+
+@app.route('/api/cache/stats')
+def api_cache_stats():
+    """Muestra estadísticas del caché"""
+    if cache_coleccion is None:
+        return jsonify({'error': 'Caché no disponible'}), 500
+    
+    total = cache_coleccion.count_documents({})
+    expirados = cache_coleccion.count_documents({
+        'expira_en': {'$lt': datetime.now().isoformat()}
+    })
+    
+    return jsonify({
+        'total_jugadores': total,
+        'expirados': expirados,
+        'activos': total - expirados
+    })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
