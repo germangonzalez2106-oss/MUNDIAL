@@ -297,7 +297,13 @@ HTML = """
         .card h3 { font-size: 2em; color: #4CAF50; }
         .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
         .chart-box { background: #0f3460; padding: 15px; border-radius: 15px; }
-        canvas { max-height: 250px; width: 100% !important; }
+        canvas {
+    max-width: 100%;
+    min-height: 300px;
+    height: auto !important;
+    background: rgba(0,0,0,0.2);
+    border-radius: 10px;
+}
         select, button, input {
             padding: 10px 20px;
             border-radius: 25px;
@@ -340,9 +346,15 @@ HTML = """
     </div>
     
     <div class="charts">
-        <div class="chart-box"><h3>⭐ Rating Promedio</h3><canvas id="ratingChart"></canvas></div>
-        <div class="chart-box"><h3>⚽ Goles Totales</h3><canvas id="golesChart"></canvas></div>
-    </div>
+        <div class="chart-box">
+    <h3>⭐ Rating Promedio</h3>
+    <canvas id="ratingChart" width="500" height="300" style="width:100%; height:300px;"></canvas>
+</div>
+<div class="chart-box">
+    <h3>⚽ Goles Totales</h3>
+    <canvas id="golesChart" width="500" height="300" style="width:100%; height:300px;"></canvas>
+</div>
+    
     
     <!-- Pronóstico -->
     <h2>🔮 Pronóstico</h2>
