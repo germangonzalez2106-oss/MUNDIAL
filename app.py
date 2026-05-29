@@ -529,8 +529,11 @@ HTML = """
             });
     }
     
-    cargarGraficos();
-    setTimeout(cargarCuotas, 500);
+   document.addEventListener('DOMContentLoaded', function() {
+        console.log("DOM cargado, inicializando...");
+        cargarGraficos();
+        cargarCuotas();
+    });
 </script>
 </body>
 </html>
@@ -788,12 +791,8 @@ HTML_RESULTADOS = """
             });
     }
 
-     document.addEventListener('DOMContentLoaded', function() {
-        console.log("DOM cargado, inicializando...");
-        cargarGraficos();
-        cargarCuotas();
-    });
-
+    
+    
 
 </script>
 
