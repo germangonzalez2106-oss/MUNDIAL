@@ -500,31 +500,40 @@ def obtener_todos_resultados(continente=None):
 
 def obtener_selecciones():
     """Obtiene selecciones desde MongoDB con datos realistas"""
+    print(f"🔍 Depuración: coleccion es {coleccion}")
     if coleccion is None:
-        return []
-    
-    # Obtener todas las selecciones con los campos que necesitas
-    selecciones = list(coleccion.find({}, {
-        '_id': 0,
-        'nombre': 1,
-        'jugadores': 1,
-        'goles_total': 1,
-        'asistencias_total': 1,
-        'rating_promedio': 1,
-        'poder_ofensivo': 1,
-        'poder_defensivo': 1,
-        'ranking_fifa': 1
-    }))
-    
-    # Si no hay datos en MongoDB, cargar datos de respaldo (fallback)
-    if not selecciones:
-        print("⚠️ No hay datos en MongoDB, usando datos de respaldo")
+        print("❌ coleccion es None")
         return DATOS_SELECCIONES_FALLBACK
     
-    # Ordenar por ranking_fifa (1 es mejor) para el ranking
-    selecciones.sort(key=lambda x: x.get('ranking_fifa', 999))
-    
-    return selecciones
+    try:
+        # Obtener una muestra para verificar
+        muestra = coleccion.find_one()
+        print(f"📊 Muestra de MongoDB: {muestra}")
+        
+        selecciones = list(coleccion.find({}, {
+            '_id': 0,
+            'nombre': 1,
+            'jugadores': 1,
+            'goles_total': 1,
+            'asistencias_total': 1,
+            'rating_promedio': 1,
+            'poder_ofensivo': 1,
+            'poder_defensivo': 1,
+            'ranking_fifa': 1
+        }))
+        
+        print(f"✅ Selecciones obtenidas: {len(selecciones)}")
+        
+        if not selecciones:
+            print("⚠️ No hay datos en MongoDB, usando fallback")
+            return DATOS_SELECCIONES_FALLBACK
+        
+        selecciones.sort(key=lambda x: x.get('ranking_fifa', 999))
+        return selecciones
+        
+    except Exception as e:
+        print(f"❌ Error al leer MongoDB: {e}")
+        return DATOS_SELECCIONES_FALLBACK
 
 # Datos de respaldo en caso de que MongoDB esté vacío
 DATOS_SELECCIONES_FALLBACK = [
@@ -1057,10 +1066,12 @@ HTML_RESULTADOS = """
 
 @app.route('/')
 def index():
-    selecciones = obtener_selecciones()
+    selecciones = obtener_selecciones()  # Esto ya trae los 25 equipos
     total_jugadores = sum(s.get('jugadores', 0) for s in selecciones)
-    return render_template_string(HTML, selecciones=selecciones, total_selecciones=len(selecciones), total_jugadores=total_jugadores)
-
+    return render_template_string(HTML, 
+                                  selecciones=selecciones,  # ← Clave: debe llamarse "selecciones"
+                                  total_selecciones=len(selecciones),
+                                  total_jugadores=total_jugadores)
 @app.route('/jugador')
 def jugador():
     return render_template_string(HTML_JUGADOR)
