@@ -348,12 +348,10 @@ HTML = """
     <div class="charts">
         <div class="chart-box">
     <h3>⭐ Rating Promedio</h3>
-    <canvas id="ratingChart" width="500" height="300" style="width:100%; height:300px;"></canvas>
-</div>
+<canvas id="ratingChart" width="800" height="400" style="width:100%; height:400px; background:#0a0a2a; border:2px solid #4CAF50; display:block;"></canvas></div>
 <div class="chart-box">
     <h3>⚽ Goles Totales</h3>
-    <canvas id="golesChart" width="500" height="300" style="width:100%; height:300px;"></canvas>
-</div>
+<canvas id="golesChart" width="800" height="400" style="width:100%; height:400px; background:#0a0a2a; border:2px solid #2196F3; display:block;"></canvas></div>
     
     
     <!-- Pronóstico -->
