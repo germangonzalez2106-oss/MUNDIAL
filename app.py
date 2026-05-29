@@ -146,8 +146,8 @@ HTML = """
     </div>
     
     <div class="charts">
-        <div class="chart-box"><h3>⭐ Top 10 - Rating Promedio</h3><canvas id="ratingChart"></canvas></div>
-        <div class="chart-box"><h3>⚽ Top 10 - Goles Totales</h3><canvas id="golesChart"></canvas></div>
+        <div class="chart-box"><h3>⭐ Top 10 - Rating Promedio</h3><canvas id="ratingChart" width="400" height="250"></canvas></div>
+        <div class="chart-box"><h3>⚽ Top 10 - Goles Totales</h3><canvas id="golesChart" width="400" height="250"></canvas></div>
     </div>
     
     <h2>🔮 Pronóstico</h2>
@@ -191,55 +191,149 @@ HTML = """
     <h2>📋 Ranking</h2>
     <table><thead>运转<th>#</th><th>Selección</th><th>Jugadores</th><th>Goles</th><th>Rating</th></tr></thead>
     <tbody>{% for s in selecciones %}
-    <tr><td>{{ loop.index }}</td><td><strong>{{ s.nombre }}</strong></td><td>{{ s.jugadores }}</td><td>{{ s.goles_total }}</td><td>{{ s.rating_promedio }}</td></tr>
+    <tr><td style="text-align:center">{{ loop.index }}</td><td><strong>{{ s.nombre }}</strong></td><td style="text-align:center">{{ s.jugadores }}</td><td style="text-align:center">{{ s.goles_total }}</td><td style="text-align:center">{{ s.rating_promedio }}</td></tr>
     {% endfor %}</tbody>
     </table>
 </div>
 
 <script>
     function cargarGraficos() {
-        fetch('/api/selecciones').then(r=>r.json()).then(data=>{
-            let topRating = [...data].sort((a,b)=>b.rating_promedio - a.rating_promedio).slice(0,10);
-            new Chart(document.getElementById('ratingChart'), { type: 'bar', data: { labels: topRating.map(t=>t.nombre), datasets: [{ label: 'Rating', data: topRating.map(t=>t.rating_promedio), backgroundColor: '#4CAF50' }] }, options: { responsive: true, plugins: { legend: { labels: { color: 'white' } } }, scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white', rotation: 45 } } } } });
-            let topGoles = [...data].sort((a,b)=>b.goles_total - a.goles_total).slice(0,10);
-            new Chart(document.getElementById('golesChart'), { type: 'bar', data: { labels: topGoles.map(t=>t.nombre), datasets: [{ label: 'Goles', data: topGoles.map(t=>t.goles_total), backgroundColor: '#2196F3' }] }, options: { responsive: true, plugins: { legend: { labels: { color: 'white' } } }, scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white', rotation: 45 } } } } });
-        }).catch(e=>console.error(e));
+        console.log("Cargando gráficos...");
+        fetch('/api/selecciones')
+            .then(r => r.json())
+            .then(data => {
+                console.log("Datos recibidos:", data.length);
+                
+                // Gráfico de Rating
+                const ratingCanvas = document.getElementById('ratingChart');
+                if (ratingCanvas) {
+                    let topRating = [...data].sort((a,b) => b.rating_promedio - a.rating_promedio).slice(0,10);
+                    new Chart(ratingCanvas, {
+                        type: 'bar',
+                        data: {
+                            labels: topRating.map(t => t.nombre),
+                            datasets: [{
+                                label: 'Rating Promedio',
+                                data: topRating.map(t => t.rating_promedio),
+                                backgroundColor: '#4CAF50'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: { legend: { labels: { color: 'white' } } },
+                            scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white', rotation: 45 } } }
+                        }
+                    });
+                }
+                
+                // Gráfico de Goles
+                const golesCanvas = document.getElementById('golesChart');
+                if (golesCanvas) {
+                    let topGoles = [...data].sort((a,b) => b.goles_total - a.goles_total).slice(0,10);
+                    new Chart(golesCanvas, {
+                        type: 'bar',
+                        data: {
+                            labels: topGoles.map(t => t.nombre),
+                            datasets: [{
+                                label: 'Goles Totales',
+                                data: topGoles.map(t => t.goles_total),
+                                backgroundColor: '#2196F3'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: { legend: { labels: { color: 'white' } } },
+                            scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white', rotation: 45 } } }
+                        }
+                    });
+                }
+            })
+            .catch(error => console.error('Error en gráficos:', error));
     }
     
     function calcularPronostico() {
         let local = document.getElementById('eqLocal').value;
         let visitante = document.getElementById('eqVisitante').value;
-        if (!local || !visitante || local===visitante) { alert("Selecciona dos equipos diferentes"); return; }
+        if (!local || !visitante) {
+            alert("Selecciona dos equipos");
+            return;
+        }
+        if (local === visitante) {
+            alert("Los equipos deben ser diferentes");
+            return;
+        }
         let div = document.getElementById('pronosticoResultado');
-        div.innerHTML = '<p>Cargando...</p>';
+        div.innerHTML = '<p style="text-align:center">Cargando pronóstico...</p>';
         div.style.display = 'block';
         fetch(`/api/pronostico?local=${encodeURIComponent(local)}&visitante=${encodeURIComponent(visitante)}`)
-            .then(r=>r.json()).then(data=>{
-                div.innerHTML = `<div class="grid-3"><div class="stat-card"><div class="big-number">${data.local}%</div><div>🏠 ${local}</div></div>
-                    <div class="stat-card"><div class="big-number">${data.empate}%</div><div>🤝 Empate</div></div>
-                    <div class="stat-card"><div class="big-number">${data.visitante}%</div><div>✈️ ${visitante}</div></div>
-                </div><div style="background:#1a1a2e;padding:15px;border-radius:10px;text-align:center">${data.recomendacion}</div>`;
-            }).catch(e=>div.innerHTML='<p>Error</p>');
+            .then(r => r.json())
+            .then(data => {
+                div.innerHTML = `
+                    <div class="grid-3">
+                        <div class="stat-card"><div class="big-number">${data.local}%</div><div>🏠 ${local}</div></div>
+                        <div class="stat-card"><div class="big-number">${data.empate}%</div><div>🤝 Empate</div></div>
+                        <div class="stat-card"><div class="big-number">${data.visitante}%</div><div>✈️ ${visitante}</div></div>
+                    </div>
+                    <div style="background:#1a1a2e;padding:15px;border-radius:10px;text-align:center">${data.recomendacion}</div>
+                `;
+            })
+            .catch(error => {
+                console.error(error);
+                div.innerHTML = '<p style="text-align:center">Error al calcular el pronóstico</p>';
+            });
     }
     
     function cargarHistorial() {
         let local = document.getElementById('histLocal').value;
         let visitante = document.getElementById('histVisit').value;
-        if (!local || !visitante) { alert("Selecciona dos equipos"); return; }
+        if (!local || !visitante) {
+            alert("Selecciona dos equipos");
+            return;
+        }
         let div = document.getElementById('historialResultado');
-        div.innerHTML = '<p>Cargando...</p>';
+        div.innerHTML = '<p style="text-align:center">Cargando historial...</p>';
         div.style.display = 'block';
         fetch(`/api/historial?eq1=${encodeURIComponent(local)}&eq2=${encodeURIComponent(visitante)}`)
-            .then(r=>r.json()).then(data=>{
-                if (data.error) { div.innerHTML = `<p>${data.error}</p>`; return; }
-                let html = `<h3>📊 ${local} vs ${visitante}</h3><div class="grid-3"><div class="stat-card">🏆 Total<br><span class="big-number">${data.total}</span><br>partidos</div></div><h4>📋 Partidos</h4><table><thead><tr><th>Fecha</th><th>Competición</th><th>Resultado</th></tr></thead><tbody>`;
-                for (let p of data.partidos) html += `<tr><td>${p.fecha}</td><td>${p.competicion}</td><td>${p.resultado}</td></tr>`;
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    div.innerHTML = `<p style="text-align:center">❌ ${data.error}</p>`;
+                    return;
+                }
+                let html = `
+                    <h3 style="text-align:center">📊 ${local} vs ${visitante}</h3>
+                    <div class="grid-3">
+                        <div class="stat-card">🏆 Total<br><span class="big-number">${data.total}</span><br>partidos</div>
+                        <div class="stat-card">⚽ Goles ${local}<br><span class="big-number">${data.goles_local}</span></div>
+                        <div class="stat-card">⚽ Goles ${visitante}<br><span class="big-number">${data.goles_visitante}</span></div>
+                    </div>
+                    <h4>📋 Partidos</h4>
+                    <table style="width:100%">
+                        <thead><tr><th>Fecha</th><th>Competición</th><th>Resultado</th></tr></thead>
+                        <tbody>
+                `;
+                for (let p of data.partidos) {
+                    html += `<tr><td style="text-align:center">${p.fecha}</td><td style="text-align:center">${p.competicion}</td><td style="text-align:center">${p.resultado}</td></tr>`;
+                }
                 html += `</tbody></table>`;
                 div.innerHTML = html;
-            }).catch(e=>div.innerHTML='<p>Error</p>');
+            })
+            .catch(error => {
+                console.error(error);
+                div.innerHTML = '<p style="text-align:center">Error al cargar el historial</p>';
+            });
     }
     
-    document.addEventListener('DOMContentLoaded', () => { cargarGraficos(); });
+    // Esperar a que el DOM esté listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            cargarGraficos();
+        });
+    } else {
+        cargarGraficos();
+    }
 </script>
 </body>
 </html>
