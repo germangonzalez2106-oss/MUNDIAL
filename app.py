@@ -499,50 +499,52 @@ def obtener_todos_resultados(continente=None):
 
 
 def obtener_selecciones():
-    """Obtiene selecciones desde MongoDB con datos realistas"""
-    print(f"🔍 Depuración: coleccion es {coleccion}")
-    if coleccion is None:
-        print("❌ coleccion es None")
-        return DATOS_SELECCIONES_FALLBACK
+    """Obtiene selecciones - versión robusta"""
     
-    try:
-        # Obtener una muestra para verificar
-        muestra = coleccion.find_one()
-        print(f"📊 Muestra de MongoDB: {muestra}")
-        
-        selecciones = list(coleccion.find({}, {
-            '_id': 0,
-            'nombre': 1,
-            'jugadores': 1,
-            'goles_total': 1,
-            'asistencias_total': 1,
-            'rating_promedio': 1,
-            'poder_ofensivo': 1,
-            'poder_defensivo': 1,
-            'ranking_fifa': 1
-        }))
-        
-        print(f"✅ Selecciones obtenidas: {len(selecciones)}")
-        
-        if not selecciones:
-            print("⚠️ No hay datos en MongoDB, usando fallback")
-            return DATOS_SELECCIONES_FALLBACK
-        
-        selecciones.sort(key=lambda x: x.get('ranking_fifa', 999))
-        return selecciones
-        
-    except Exception as e:
-        print(f"❌ Error al leer MongoDB: {e}")
-        return DATOS_SELECCIONES_FALLBACK
-
-# Datos de respaldo en caso de que MongoDB esté vacío
-DATOS_SELECCIONES_FALLBACK = [
-    {'nombre': 'Argentina', 'jugadores': 23, 'goles_total': 52, 'asistencias_total': 38, 'rating_promedio': 7.34, 'ranking_fifa': 1},
-    {'nombre': 'Francia', 'jugadores': 23, 'goles_total': 48, 'asistencias_total': 35, 'rating_promedio': 7.28, 'ranking_fifa': 2},
-    {'nombre': 'Brasil', 'jugadores': 23, 'goles_total': 45, 'asistencias_total': 32, 'rating_promedio': 7.21, 'ranking_fifa': 3},
-    {'nombre': 'Inglaterra', 'jugadores': 23, 'goles_total': 44, 'asistencias_total': 30, 'rating_promedio': 7.15, 'ranking_fifa': 4},
-    {'nombre': 'Alemania', 'jugadores': 23, 'goles_total': 74, 'asistencias_total': 42, 'rating_promedio': 7.50, 'ranking_fifa': 11},
-]
+    # DATOS DE RESPALDO (siempre disponibles)
+    datos_respaldo = [
+        {'nombre': 'Argentina', 'jugadores': 18, 'goles_total': 61, 'rating_promedio': 8.23, 'ranking_fifa': 1},
+        {'nombre': 'Francia', 'jugadores': 18, 'goles_total': 69, 'rating_promedio': 8.29, 'ranking_fifa': 2},
+        {'nombre': 'Brasil', 'jugadores': 18, 'goles_total': 56, 'rating_promedio': 7.99, 'ranking_fifa': 3},
+        {'nombre': 'Inglaterra', 'jugadores': 18, 'goles_total': 51, 'rating_promedio': 7.93, 'ranking_fifa': 4},
+        {'nombre': 'Bélgica', 'jugadores': 23, 'goles_total': 76, 'rating_promedio': 8.12, 'ranking_fifa': 5},
+        {'nombre': 'Croacia', 'jugadores': 23, 'goles_total': 61, 'rating_promedio': 7.85, 'ranking_fifa': 6},
+        {'nombre': 'Países Bajos', 'jugadores': 18, 'goles_total': 60, 'rating_promedio': 7.81, 'ranking_fifa': 7},
+        {'nombre': 'Portugal', 'jugadores': 18, 'goles_total': 43, 'rating_promedio': 7.8, 'ranking_fifa': 8},
+        {'nombre': 'España', 'jugadores': 18, 'goles_total': 82, 'rating_promedio': 7.55, 'ranking_fifa': 9},
+        {'nombre': 'Italia', 'jugadores': 23, 'goles_total': 55, 'rating_promedio': 7.32, 'ranking_fifa': 10},
+        {'nombre': 'Alemania', 'jugadores': 18, 'goles_total': 74, 'rating_promedio': 7.5, 'ranking_fifa': 11},
+        {'nombre': 'Uruguay', 'jugadores': 23, 'goles_total': 54, 'rating_promedio': 7.35, 'ranking_fifa': 12},
+        {'nombre': 'Colombia', 'jugadores': 23, 'goles_total': 72, 'rating_promedio': 7.24, 'ranking_fifa': 13},
+        {'nombre': 'México', 'jugadores': 23, 'goles_total': 72, 'rating_promedio': 7.11, 'ranking_fifa': 14},
+        {'nombre': 'Estados Unidos', 'jugadores': 23, 'goles_total': 55, 'rating_promedio': 7.23, 'ranking_fifa': 15},
+        {'nombre': 'Marruecos', 'jugadores': 23, 'goles_total': 55, 'rating_promedio': 6.81, 'ranking_fifa': 16},
+        {'nombre': 'Senegal', 'jugadores': 23, 'goles_total': 70, 'rating_promedio': 6.68, 'ranking_fifa': 17},
+        {'nombre': 'Japón', 'jugadores': 23, 'goles_total': 69, 'rating_promedio': 6.86, 'ranking_fifa': 18},
+        {'nombre': 'Corea del Sur', 'jugadores': 23, 'goles_total': 82, 'rating_promedio': 6.55, 'ranking_fifa': 19},
+        {'nombre': 'Egipto', 'jugadores': 23, 'goles_total': 54, 'rating_promedio': 6.66, 'ranking_fifa': 20},
+        {'nombre': 'Australia', 'jugadores': 23, 'goles_total': 61, 'rating_promedio': 6.56, 'ranking_fifa': 21},
+        {'nombre': 'Suiza', 'jugadores': 23, 'goles_total': 90, 'rating_promedio': 6.4, 'ranking_fifa': 22},
+        {'nombre': 'Dinamarca', 'jugadores': 23, 'goles_total': 81, 'rating_promedio': 6.41, 'ranking_fifa': 23},
+        {'nombre': 'Polonia', 'jugadores': 23, 'goles_total': 60, 'rating_promedio': 6.26, 'ranking_fifa': 24},
+        {'nombre': 'Canadá', 'jugadores': 23, 'goles_total': 62, 'rating_promedio': 6.17, 'ranking_fifa': 25},
+    ]
+    
+    # Intentar obtener de MongoDB
+    if coleccion is not None:
+        try:
+            selecciones = list(coleccion.find({}, {'_id': 0, 'nombre': 1, 'jugadores': 1, 'goles_total': 1, 'rating_promedio': 1, 'ranking_fifa': 1}))
+            if selecciones and len(selecciones) > 0:
+                print(f"✅ Usando datos de MongoDB: {len(selecciones)} selecciones")
+                # Ordenar por ranking_fifa
+                selecciones.sort(key=lambda x: x.get('ranking_fifa', 999))
+                return selecciones
+        except Exception as e:
+            print(f"❌ Error con MongoDB: {e}")
+    
+    # Fallback a datos de respaldo
+    print(f"⚠️ Usando datos de respaldo: {len(datos_respaldo)} selecciones")
+    return datos_respaldo
 
 def obtener_historial(e1, e2):
     """Obtiene historial de enfrentamientos directos"""
