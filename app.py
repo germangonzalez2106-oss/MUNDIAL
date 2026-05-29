@@ -499,8 +499,41 @@ def obtener_todos_resultados(continente=None):
 
 
 def obtener_selecciones():
-    if coleccion is None: return []
-    return list(coleccion.find({}, {'_id': 0}))
+    """Obtiene selecciones desde MongoDB con datos realistas"""
+    if coleccion is None:
+        return []
+    
+    # Obtener todas las selecciones con los campos que necesitas
+    selecciones = list(coleccion.find({}, {
+        '_id': 0,
+        'nombre': 1,
+        'jugadores': 1,
+        'goles_total': 1,
+        'asistencias_total': 1,
+        'rating_promedio': 1,
+        'poder_ofensivo': 1,
+        'poder_defensivo': 1,
+        'ranking_fifa': 1
+    }))
+    
+    # Si no hay datos en MongoDB, cargar datos de respaldo (fallback)
+    if not selecciones:
+        print("⚠️ No hay datos en MongoDB, usando datos de respaldo")
+        return DATOS_SELECCIONES_FALLBACK
+    
+    # Ordenar por ranking_fifa (1 es mejor) para el ranking
+    selecciones.sort(key=lambda x: x.get('ranking_fifa', 999))
+    
+    return selecciones
+
+# Datos de respaldo en caso de que MongoDB esté vacío
+DATOS_SELECCIONES_FALLBACK = [
+    {'nombre': 'Argentina', 'jugadores': 23, 'goles_total': 52, 'asistencias_total': 38, 'rating_promedio': 7.34, 'ranking_fifa': 1},
+    {'nombre': 'Francia', 'jugadores': 23, 'goles_total': 48, 'asistencias_total': 35, 'rating_promedio': 7.28, 'ranking_fifa': 2},
+    {'nombre': 'Brasil', 'jugadores': 23, 'goles_total': 45, 'asistencias_total': 32, 'rating_promedio': 7.21, 'ranking_fifa': 3},
+    {'nombre': 'Inglaterra', 'jugadores': 23, 'goles_total': 44, 'asistencias_total': 30, 'rating_promedio': 7.15, 'ranking_fifa': 4},
+    {'nombre': 'Alemania', 'jugadores': 23, 'goles_total': 74, 'asistencias_total': 42, 'rating_promedio': 7.50, 'ranking_fifa': 11},
+]
 
 def obtener_historial(e1, e2):
     """Obtiene historial de enfrentamientos directos"""
@@ -538,23 +571,58 @@ def obtener_cuotas():
         return None
 
 def pronostico(local, visitante):
-    d1 = next((s for s in obtener_selecciones() if s['nombre'] == local), None)
-    d2 = next((s for s in obtener_selecciones() if s['nombre'] == visitante), None)
-    if not d1 or not d2: return None
-    rating1 = d1.get('rating_promedio', 6.5) * 10
-    rating2 = d2.get('rating_promedio', 6.5) * 10
-    goles1 = d1.get('goles_total', 0) / max(1, d1.get('jugadores', 1))
-    goles2 = d2.get('goles_total', 0) / max(1, d2.get('jugadores', 1))
-    fuerza1 = rating1 * 0.5 + goles1 * 30
-    fuerza2 = rating2 * 0.5 + goles2 * 30
+    """Calcula pronóstico usando datos realistas de MongoDB"""
+    selecciones = obtener_selecciones()
+    
+    d1 = next((s for s in selecciones if s.get('nombre') == local), None)
+    d2 = next((s for s in selecciones if s.get('nombre') == visitante), None)
+    
+    if not d1 or not d2:
+        return None
+    
+    # Usar ranking_fifa (menor número = mejor equipo)
+    ranking1 = d1.get('ranking_fifa', 15)
+    ranking2 = d2.get('ranking_fifa', 15)
+    
+    # Convertir ranking a puntaje (inverso: ranking 1 = 100 puntos)
+    fuerza_ranking1 = max(0, 100 - (ranking1 - 1) * 3)
+    fuerza_ranking2 = max(0, 100 - (ranking2 - 1) * 3)
+    
+    # Usar poder_ofensivo y rating_promedio
+    poder1 = d1.get('poder_ofensivo', 2.0)
+    poder2 = d2.get('poder_ofensivo', 2.0)
+    rating1 = d1.get('rating_promedio', 7.0)
+    rating2 = d2.get('rating_promedio', 7.0)
+    
+    # Cálculo combinado
+    fuerza1 = fuerza_ranking1 * 0.4 + poder1 * 15 + rating1 * 5
+    fuerza2 = fuerza_ranking2 * 0.4 + poder2 * 15 + rating2 * 5
+    
     total = fuerza1 + fuerza2
     prob1 = round((fuerza1 / total) * 70, 1)
     prob2 = round((fuerza2 / total) * 70, 1)
     probE = round(100 - prob1 - prob2, 1)
-    if prob1 > 50: rec = f"💰 Apostar por {local} - Prob: {prob1}%"
-    elif prob2 > 50: rec = f"💰 Apostar por {visitante} - Prob: {prob2}%"
-    else: rec = f"🤝 Apostar al empate - Prob: {probE}%"
-    return {'local': prob1, 'empate': probE, 'visitante': prob2, 'recomendacion': rec}
+    
+    # Ajustar por mínimos
+    if prob1 < 5: prob1 = 5
+    if prob2 < 5: prob2 = 5
+    probE = 100 - prob1 - prob2
+    
+    if prob1 > 50:
+        rec = f"💰 Apostar por {local} - Prob: {prob1}% (Ranking #{ranking1})"
+    elif prob2 > 50:
+        rec = f"💰 Apostar por {visitante} - Prob: {prob2}% (Ranking #{ranking2})"
+    else:
+        rec = f"🤝 Apostar al empate - Partido muy parejo (Dif: {abs(prob1-prob2):.1f}%)"
+    
+    return {
+        'local': prob1, 
+        'empate': probE, 
+        'visitante': prob2, 
+        'recomendacion': rec,
+        'ranking_local': ranking1,
+        'ranking_visitante': ranking2
+    }
 
 # ==================== HTML ====================
 HTML = """
