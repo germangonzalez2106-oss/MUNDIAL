@@ -787,7 +787,17 @@ HTML_RESULTADOS = """
                 div.innerHTML = html;
             });
     }
+
+     document.addEventListener('DOMContentLoaded', function() {
+        console.log("DOM cargado, inicializando...");
+        cargarGraficos();
+        cargarCuotas();
+    });
+
+
 </script>
+
+
 </body>
 </html>
 """
