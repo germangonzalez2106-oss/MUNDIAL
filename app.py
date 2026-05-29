@@ -632,6 +632,15 @@ def pronostico(local, visitante):
         'ranking_local': ranking1,
         'ranking_visitante': ranking2
     }
+# Función de respaldo para generar opciones manualmente
+def generar_opciones_selecciones(selecciones):
+    """Genera las opciones HTML para los selectores"""
+    opciones = '<option value="">Selecciona</option>'
+    for s in selecciones:
+        nombre = s.get('nombre', '')
+        if nombre:
+            opciones += f'<option value="{nombre}">{nombre}</option>'
+    return opciones
 
 # ==================== HTML ====================
 HTML = """
@@ -1062,16 +1071,27 @@ HTML_RESULTADOS = """
 </body>
 </html>
 """
+
+# ========== PRUEBA DE CONEXIÓN ==========
+@app.route('/test')
+def test():
+    selecciones = obtener_selecciones()
+    if selecciones:
+        return f"<h1>Prueba</h1><p>Se encontraron {len(selecciones)} selecciones</p><p>Primera: {selecciones[0].get('nombre')}</p>"
+    else:
+        return "<h1>Error</h1><p>No se encontraron selecciones</p>"
+# ========================================
+
 # ==================== RUTAS ====================
+
+
 
 @app.route('/')
 def index():
-    selecciones = obtener_selecciones()  # Esto ya trae los 25 equipos
+    selecciones = obtener_selecciones()
     total_jugadores = sum(s.get('jugadores', 0) for s in selecciones)
-    return render_template_string(HTML, 
-                                  selecciones=selecciones,  # ← Clave: debe llamarse "selecciones"
-                                  total_selecciones=len(selecciones),
-                                  total_jugadores=total_jugadores)
+    return render_template_string(HTML, selecciones=selecciones, total_selecciones=len(selecciones), total_jugadores=total_jugadores)
+
 @app.route('/jugador')
 def jugador():
     return render_template_string(HTML_JUGADOR)
