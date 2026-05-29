@@ -393,84 +393,64 @@ HTML = """
     let ratingChart, golesChart;
     
     function cargarGraficos() {
-    console.log("Cargando gráficos...");
+    console.log("Cargando gráficos desde datos del servidor...");
     
-    // Verificar que los canvas existan
+    // Tomar los datos directamente del HTML (como el ranking)
+    const selecciones = {{ selecciones | tojson | safe }};
+    
+    console.log("Selecciones recibidas:", selecciones.length);
+    
+    // Top 10 Rating
+    let topRating = [...selecciones].sort((a,b) => b.rating_promedio - a.rating_promedio).slice(0,10);
     const ratingCanvas = document.getElementById('ratingChart');
+    if (ratingCanvas) {
+        new Chart(ratingCanvas, {
+            type: 'bar',
+            data: {
+                labels: topRating.map(t => t.nombre),
+                datasets: [{
+                    label: 'Rating Promedio',
+                    data: topRating.map(t => t.rating_promedio),
+                    backgroundColor: 'rgba(76,175,80,0.7)',
+                    borderColor: '#4CAF50',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: { legend: { labels: { color: 'white' } } },
+                scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white', rotation: 45 } } }
+            }
+        });
+        console.log("Gráfico de rating creado");
+    }
+    
+    // Top 10 Goles
+    let topGoles = [...selecciones].sort((a,b) => b.goles_total - a.goles_total).slice(0,10);
     const golesCanvas = document.getElementById('golesChart');
-    
-    if (!ratingCanvas) {
-        console.error("No se encontró el canvas ratingChart");
-        return;
-    }
-    if (!golesCanvas) {
-        console.error("No se encontró el canvas golesChart");
-        return;
-    }
-    
-    fetch('/api/selecciones')
-        .then(r => {
-            if (!r.ok) throw new Error('Error en la respuesta');
-            return r.json();
-        })
-        .then(data => {
-            console.log("Datos recibidos:", data.length);
-            
-            // Top 10 Rating
-            let topRating = [...data].sort((a,b) => b.rating_promedio - a.rating_promedio).slice(0,10);
-            try {
-                new Chart(ratingCanvas, {
-                    type: 'bar',
-                    data: {
-                        labels: topRating.map(t => t.nombre),
-                        datasets: [{
-                            label: 'Rating Promedio',
-                            data: topRating.map(t => t.rating_promedio),
-                            backgroundColor: 'rgba(76,175,80,0.7)',
-                            borderColor: '#4CAF50',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        plugins: { legend: { labels: { color: 'white' } } },
-                        scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white', rotation: 45 } } }
-                    }
-                });
-                console.log("Gráfico de rating creado");
-            } catch(e) {
-                console.error("Error creando gráfico de rating:", e);
+    if (golesCanvas) {
+        new Chart(golesCanvas, {
+            type: 'bar',
+            data: {
+                labels: topGoles.map(t => t.nombre),
+                datasets: [{
+                    label: 'Goles Totales',
+                    data: topGoles.map(t => t.goles_total),
+                    backgroundColor: 'rgba(33,150,243,0.7)',
+                    borderColor: '#2196F3',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: { legend: { labels: { color: 'white' } } },
+                scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white', rotation: 45 } } }
             }
-            
-            // Top 10 Goles
-            let topGoles = [...data].sort((a,b) => b.goles_total - a.goles_total).slice(0,10);
-            try {
-                new Chart(golesCanvas, {
-                    type: 'bar',
-                    data: {
-                        labels: topGoles.map(t => t.nombre),
-                        datasets: [{
-                            label: 'Goles Totales',
-                            data: topGoles.map(t => t.goles_total),
-                            backgroundColor: 'rgba(33,150,243,0.7)',
-                            borderColor: '#2196F3',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        plugins: { legend: { labels: { color: 'white' } } },
-                        scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white', rotation: 45 } } }
-                    }
-                });
-                console.log("Gráfico de goles creado");
-            } catch(e) {
-                console.error("Error creando gráfico de goles:", e);
-            }
-        })
-        .catch(error => console.error('Error cargando datos para gráficos:', error));
+        });
+        console.log("Gráfico de goles creado");
+    }
 }
     
     function calcularPronostico() {
