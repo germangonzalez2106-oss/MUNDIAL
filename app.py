@@ -20,7 +20,7 @@ except Exception as e:
     coleccion = None
 
 # ==================== DATOS DE RESPALDO ====================
-DATOS_RESPALDO = [
+DATOS_COMPLETOS = [
     {'nombre': 'Argentina', 'jugadores': 18, 'goles_total': 61, 'rating_promedio': 8.23, 'ranking_fifa': 1},
     {'nombre': 'Francia', 'jugadores': 18, 'goles_total': 69, 'rating_promedio': 8.29, 'ranking_fifa': 2},
     {'nombre': 'Brasil', 'jugadores': 18, 'goles_total': 56, 'rating_promedio': 7.99, 'ranking_fifa': 3},
@@ -49,76 +49,105 @@ DATOS_RESPALDO = [
 ]
 
 def obtener_selecciones():
-    """Obtiene selecciones (MongoDB o respaldo)"""
-    if coleccion is not None:
-        try:
-            selecciones = list(coleccion.find({}, {'_id': 0, 'nombre': 1, 'jugadores': 1, 'goles_total': 1, 'rating_promedio': 1, 'ranking_fifa': 1}))
-            if selecciones and len(selecciones) > 0:
-                selecciones.sort(key=lambda x: x.get('ranking_fifa', 999))
-                return selecciones
-        except Exception as e:
-            print(f"Error MongoDB: {e}")
-    return DATOS_RESPALDO
+    """Devuelve los datos completos (fallback garantizado)"""
+    return DATOS_COMPLETOS
 
-# ==================== HISTORIAL Y PARTIDOS ====================
+# ==================== HISTORIAL REAL ====================
 HISTORIAL_ENFRENTAMIENTOS = {
     ("Argentina", "Brasil"): [
         {"fecha": "2025-11-21", "competicion": "Eliminatorias", "resultado": "Argentina 2-1 Brasil"},
         {"fecha": "2024-07-10", "competicion": "Copa América", "resultado": "Argentina 1-0 Brasil"},
+        {"fecha": "2023-11-16", "competicion": "Eliminatorias", "resultado": "Argentina 0-1 Brasil"},
     ],
     ("Argentina", "Francia"): [
-        {"fecha": "2022-12-18", "competicion": "Mundial Final", "resultado": "Argentina 3-3 Francia (4-2 pen)"},
+        {"fecha": "2022-12-18", "competicion": "Final Mundial", "resultado": "Argentina 3-3 Francia (4-2 pen)"},
+        {"fecha": "2018-06-30", "competicion": "Mundial", "resultado": "Francia 4-3 Argentina"},
+    ],
+    ("Argentina", "Alemania"): [
+        {"fecha": "2014-07-13", "competicion": "Final Mundial", "resultado": "Alemania 1-0 Argentina"},
     ],
 }
 
 def obtener_historial(e1, e2):
-    h = HISTORIAL_ENFRENTAMIENTOS.get((e1, e2)) or HISTORIAL_ENFRENTAMIENTOS.get((e2, e1))
-    if not h:
+    """Obtiene historial entre dos equipos"""
+    clave = (e1, e2)
+    clave_inversa = (e2, e1)
+    
+    partidos = HISTORIAL_ENFRENTAMIENTOS.get(clave) or HISTORIAL_ENFRENTAMIENTOS.get(clave_inversa)
+    if not partidos:
         return None
-    goles1 = goles2 = 0
-    for p in h:
-        try:
-            if e1 in p['resultado']:
-                import re
-                nums = re.findall(r'(\d+)-(\d+)', p['resultado'])
-                if nums:
-                    g1, g2 = map(int, nums[0])
-                    if p['resultado'].startswith(e1):
+    
+    goles1 = 0
+    goles2 = 0
+    
+    for p in partidos:
+        resultado = p['resultado']
+        # Extraer goles del resultado (formato "Equipo1 X-Y Equipo2")
+        import re
+        numeros = re.findall(r'(\d+)-(\d+)', resultado)
+        if numeros:
+            g1, g2 = map(int, numeros[0])
+            # Determinar quién es quién
+            if resultado.startswith(e1):
+                goles1 += g1
+                goles2 += g2
+            elif resultado.startswith(e2):
+                goles1 += g2
+                goles2 += g1
+            else:
+                # Si el resultado no empieza con ninguno, buscar en la cadena
+                if e1 in resultado and e2 in resultado:
+                    # Asumir que el primero que aparece es local
+                    if resultado.find(e1) < resultado.find(e2):
                         goles1 += g1
                         goles2 += g2
                     else:
                         goles1 += g2
                         goles2 += g1
-        except:
-            pass
-    return {"total": len(h), "partidos": h, "goles_local": goles1, "goles_visitante": goles2}
+    
+    return {
+        'total': len(partidos),
+        'partidos': partidos,
+        'goles_local': goles1,
+        'goles_visitante': goles2
+    }
 
 def pronostico(local, visitante):
-    selecciones = {s['nombre']: s for s in obtener_selecciones()}
-    d1 = selecciones.get(local)
-    d2 = selecciones.get(visitante)
+    """Calcula pronóstico basado en ranking FIFA"""
+    equipos = {e['nombre']: e for e in DATOS_COMPLETOS}
+    d1 = equipos.get(local)
+    d2 = equipos.get(visitante)
+    
     if not d1 or not d2:
         return None
+    
     ranking1 = d1.get('ranking_fifa', 15)
     ranking2 = d2.get('ranking_fifa', 15)
-    fuerza1 = max(0, 100 - (ranking1 - 1) * 3)
-    fuerza2 = max(0, 100 - (ranking2 - 1) * 3)
-    total = fuerza1 + fuerza2
-    prob1 = round((fuerza1 / total) * 70, 1)
-    prob2 = round((fuerza2 / total) * 70, 1)
-    probE = round(100 - prob1 - prob2, 1)
-    if prob1 < 5: prob1 = 5
-    if prob2 < 5: prob2 = 5
-    probE = 100 - prob1 - prob2
-    if prob1 > 50:
-        rec = f"💰 Apostar por {local} - Prob: {prob1}% (Ranking #{ranking1})"
-    elif prob2 > 50:
-        rec = f"💰 Apostar por {visitante} - Prob: {prob2}% (Ranking #{ranking2})"
+    
+    # Convertir ranking a puntaje (menor ranking = mejor)
+    puntaje1 = max(0, 100 - (ranking1 - 1) * 3)
+    puntaje2 = max(0, 100 - (ranking2 - 1) * 3)
+    
+    total = puntaje1 + puntaje2
+    prob_local = round((puntaje1 / total) * 70, 1)
+    prob_visitante = round((puntaje2 / total) * 70, 1)
+    prob_empate = round(100 - prob_local - prob_visitante, 1)
+    
+    if prob_local > 50:
+        recomendacion = f"💰 Favorito: {local} - {prob_local}% (Ranking #{ranking1})"
+    elif prob_visitante > 50:
+        recomendacion = f"💰 Favorito: {visitante} - {prob_visitante}% (Ranking #{ranking2})"
     else:
-        rec = f"🤝 Apostar al empate - Partido parejo"
-    return {'local': prob1, 'empate': probE, 'visitante': prob2, 'recomendacion': rec}
+        recomendacion = f"🤝 Partido muy parejo - Empate probable: {prob_empate}%"
+    
+    return {
+        'local': prob_local,
+        'empate': prob_empate,
+        'visitante': prob_visitante,
+        'recomendacion': recomendacion
+    }
 
-# ==================== HTML ====================
+# ==================== HTML COMPLETO ====================
 HTML = """
 <!DOCTYPE html>
 <html>
@@ -183,96 +212,200 @@ HTML = """
     
     <h2>🔮 Pronóstico</h2>
     <div class="flex">
-        <select id="eqLocal"><option value="">Local</option>{% for s in selecciones %}<option value="{{ s.nombre }}">{{ s.nombre }}</option>{% endfor %}</select>
+        <select id="eqLocal">
+            <option value="">Local</option>
+            {% for s in selecciones %}
+            <option value="{{ s.nombre }}">{{ s.nombre }}</option>
+            {% endfor %}
+        </select>
         <span>VS</span>
-        <select id="eqVisitante"><option value="">Visitante</option>{% for s in selecciones %}<option value="{{ s.nombre }}">{{ s.nombre }}</option>{% endfor %}</select>
+        <select id="eqVisitante">
+            <option value="">Visitante</option>
+            {% for s in selecciones %}
+            <option value="{{ s.nombre }}">{{ s.nombre }}</option>
+            {% endfor %}
+        </select>
         <button class="btn-orange" onclick="calcularPronostico()">🔮 Calcular</button>
     </div>
     <div id="pronosticoResultado" class="results"></div>
     
     <h2>📜 Historial de Enfrentamientos</h2>
     <div class="flex">
-        <select id="histLocal"><option value="">Equipo</option>{% for s in selecciones %}<option value="{{ s.nombre }}">{{ s.nombre }}</option>{% endfor %}</select>
+        <select id="histLocal">
+            <option value="">Equipo</option>
+            {% for s in selecciones %}
+            <option value="{{ s.nombre }}">{{ s.nombre }}</option>
+            {% endfor %}
+        </select>
         <span>VS</span>
-        <select id="histVisit"><option value="">Equipo</option>{% for s in selecciones %}<option value="{{ s.nombre }}">{{ s.nombre }}</option>{% endfor %}</select>
+        <select id="histVisit">
+            <option value="">Equipo</option>
+            {% for s in selecciones %}
+            <option value="{{ s.nombre }}">{{ s.nombre }}</option>
+            {% endfor %}
+        </select>
         <button class="btn-blue" onclick="cargarHistorial()">📜 Ver</button>
     </div>
     <div id="historialResultado" class="results"></div>
     
     <h2>📋 Ranking</h2>
-    <table><thead>运转<th>#</th><th>Selección</th><th>Jugadores</th><th>Goles</th><th>Rating</th></tr></thead>
-    <tbody>{% for s in selecciones %}
-    <tr><td>{{ loop.index }}</td><td><strong>{{ s.nombre }}</strong></td><td>{{ s.jugadores }}</td><td>{{ s.goles_total }}</td><td>{{ s.rating_promedio }}</td></tr>
-    {% endfor %}</tbody>
+    <table>
+        <thead><tr><th>#</th><th>Selección</th><th>Jugadores</th><th>Goles</th><th>Rating</th></tr></thead>
+        <tbody>
+            {% for s in selecciones %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td><strong>{{ s.nombre }}</strong></td>
+                <td>{{ s.jugadores }}</td>
+                <td>{{ s.goles_total }}</td>
+                <td>{{ s.rating_promedio }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
     </table>
 </div>
 
 <script>
     function cargarGraficos() {
-        fetch('/api/selecciones').then(r=>r.json()).then(data=>{
-            let topRating = [...data].sort((a,b)=>b.rating_promedio - a.rating_promedio).slice(0,10);
-            new Chart(document.getElementById('ratingChart'), {
-                type: 'bar', data: { labels: topRating.map(t=>t.nombre), datasets: [{ label: 'Rating', data: topRating.map(t=>t.rating_promedio), backgroundColor: '#4CAF50' }] },
-                options: { responsive: true, plugins: { legend: { labels: { color: 'white' } } }, scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white', rotation: 45 } } } }
-            });
-            let topGoles = [...data].sort((a,b)=>b.goles_total - a.goles_total).slice(0,10);
-            new Chart(document.getElementById('golesChart'), {
-                type: 'bar', data: { labels: topGoles.map(t=>t.nombre), datasets: [{ label: 'Goles', data: topGoles.map(t=>t.goles_total), backgroundColor: '#2196F3' }] },
-                options: { responsive: true, plugins: { legend: { labels: { color: 'white' } } }, scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white', rotation: 45 } } } }
-            });
-        }).catch(e=>console.error(e));
+        fetch('/api/selecciones')
+            .then(r => r.json())
+            .then(data => {
+                // Top 10 Rating
+                let topRating = [...data].sort((a,b) => b.rating_promedio - a.rating_promedio).slice(0,10);
+                new Chart(document.getElementById('ratingChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: topRating.map(t => t.nombre),
+                        datasets: [{
+                            label: 'Rating Promedio',
+                            data: topRating.map(t => t.rating_promedio),
+                            backgroundColor: '#4CAF50'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: { legend: { labels: { color: 'white' } } },
+                        scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white', rotation: 45 } } }
+                    }
+                });
+                
+                // Top 10 Goles
+                let topGoles = [...data].sort((a,b) => b.goles_total - a.goles_total).slice(0,10);
+                new Chart(document.getElementById('golesChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: topGoles.map(t => t.nombre),
+                        datasets: [{
+                            label: 'Goles Totales',
+                            data: topGoles.map(t => t.goles_total),
+                            backgroundColor: '#2196F3'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: { legend: { labels: { color: 'white' } } },
+                        scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white', rotation: 45 } } }
+                    }
+                });
+            })
+            .catch(e => console.error('Error en gráficos:', e));
     }
     
     function calcularPronostico() {
         let local = document.getElementById('eqLocal').value;
         let visitante = document.getElementById('eqVisitante').value;
-        if (!local || !visitante || local===visitante) { alert("Selecciona dos equipos diferentes"); return; }
+        
+        if (!local || !visitante) {
+            alert("Selecciona dos equipos");
+            return;
+        }
+        if (local === visitante) {
+            alert("Los equipos deben ser diferentes");
+            return;
+        }
+        
         let div = document.getElementById('pronosticoResultado');
-        div.innerHTML = '<p>Cargando...</p>';
+        div.innerHTML = '<p>Cargando pronóstico...</p>';
         div.style.display = 'block';
+        
         fetch(`/api/pronostico?local=${encodeURIComponent(local)}&visitante=${encodeURIComponent(visitante)}`)
-            .then(r=>r.json()).then(data=>{
-                div.innerHTML = `<div class="grid-3"><div class="stat-card"><div class="big-number">${data.local}%</div><div>🏠 ${local}</div></div>
-                    <div class="stat-card"><div class="big-number">${data.empate}%</div><div>🤝 Empate</div></div>
-                    <div class="stat-card"><div class="big-number">${data.visitante}%</div><div>✈️ ${visitante}</div></div>
-                </div><div style="background:#1a1a2e;padding:15px;border-radius:10px;text-align:center">${data.recomendacion}</div>`;
-            }).catch(e=>div.innerHTML='<p>Error</p>');
+            .then(r => r.json())
+            .then(data => {
+                div.innerHTML = `
+                    <div class="grid-3">
+                        <div class="stat-card"><div class="big-number">${data.local}%</div><div>🏠 ${local}</div></div>
+                        <div class="stat-card"><div class="big-number">${data.empate}%</div><div>🤝 Empate</div></div>
+                        <div class="stat-card"><div class="big-number">${data.visitante}%</div><div>✈️ ${visitante}</div></div>
+                    </div>
+                    <div style="background:#1a1a2e;padding:15px;border-radius:10px;text-align:center">${data.recomendacion}</div>
+                `;
+            })
+            .catch(e => div.innerHTML = '<p>Error al calcular el pronóstico</p>');
     }
     
     function cargarHistorial() {
         let local = document.getElementById('histLocal').value;
         let visitante = document.getElementById('histVisit').value;
-        if (!local || !visitante) { alert("Selecciona dos equipos"); return; }
+        
+        if (!local || !visitante) {
+            alert("Selecciona dos equipos");
+            return;
+        }
+        
         let div = document.getElementById('historialResultado');
-        div.innerHTML = '<p>Cargando...</p>';
+        div.innerHTML = '<p>Cargando historial...</p>';
         div.style.display = 'block';
+        
         fetch(`/api/historial?eq1=${encodeURIComponent(local)}&eq2=${encodeURIComponent(visitante)}`)
-            .then(r=>r.json()).then(data=>{
-                if (data.error) { div.innerHTML = `<p>${data.error}</p>`; return; }
-                let html = `<h3>📊 ${local} vs ${visitante}</h3><div class="grid-3"><div class="stat-card">🏆 Total<br><span class="big-number">${data.total}</span><br>partidos</div>
-                    <div class="stat-card">⚽ Goles ${local}<br><span class="big-number">${data.goles_local}</span></div>
-                    <div class="stat-card">⚽ Goles ${visitante}<br><span class="big-number">${data.goles_visitante}</span></div></div>
-                    <h4>📋 Partidos</h4><table><thead><tr><th>Fecha</th><th>Competición</th><th>Resultado</th></tr></thead><tbody>`;
-                for (let p of data.partidos) html += `<tr><td>${p.fecha}</td><td>${p.competicion}</td><td>${p.resultado}</td></tr>`;
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    div.innerHTML = `<p>❌ ${data.error}</p>`;
+                    return;
+                }
+                
+                let html = `
+                    <h3>📊 ${local} vs ${visitante}</h3>
+                    <div class="grid-3">
+                        <div class="stat-card">🏆 Total<br><span class="big-number">${data.total}</span><br>partidos</div>
+                        <div class="stat-card">⚽ Goles ${local}<br><span class="big-number">${data.goles_local}</span></div>
+                        <div class="stat-card">⚽ Goles ${visitante}<br><span class="big-number">${data.goles_visitante}</span></div>
+                    </div>
+                    <h4>📋 Partidos</h4>
+                    <table style="width:100%">
+                        <thead><tr><th>Fecha</th><th>Competición</th><th>Resultado</th></tr></thead>
+                        <tbody>
+                `;
+                
+                for (let p of data.partidos) {
+                    html += `<tr><td>${p.fecha}</td><td>${p.competicion}</td><td>${p.resultado}</td></tr>`;
+                }
+                
                 html += `</tbody></table>`;
                 div.innerHTML = html;
-            }).catch(e=>div.innerHTML='<p>Error</p>');
+            })
+            .catch(e => div.innerHTML = '<p>Error al cargar el historial</p>');
     }
     
-    document.addEventListener('DOMContentLoaded', () => { cargarGraficos(); });
+    document.addEventListener('DOMContentLoaded', () => {
+        cargarGraficos();
+    });
 </script>
 </body>
 </html>
 """
-
-HTML_JUGADOR = "<!DOCTYPE html><html><head><title>Jugadores</title></head><body><h1>🔍 Buscador</h1><input id='search'><button onclick='buscar()'>Buscar</button><div id='res'></div><script>function buscar(){fetch('/api/jugador/buscar?nombre='+document.getElementById('search').value).then(r=>r.json()).then(d=>{document.getElementById('res').innerHTML=d.error?d.error:`<h3>${d.player}</h3><p>Goles: ${d.goals}</p>`;})}</script></body></html>"
 
 # ==================== RUTAS ====================
 @app.route('/')
 def index():
     selecciones = obtener_selecciones()
     total_jugadores = sum(s.get('jugadores', 0) for s in selecciones)
-    return render_template_string(HTML, selecciones=selecciones, total_selecciones=len(selecciones), total_jugadores=total_jugadores)
+    return render_template_string(HTML, 
+                                  selecciones=selecciones, 
+                                  total_selecciones=len(selecciones), 
+                                  total_jugadores=total_jugadores)
 
 @app.route('/api/selecciones')
 def api_selecciones():
@@ -282,26 +415,55 @@ def api_selecciones():
 def api_pronostico():
     local = request.args.get('local', '')
     visitante = request.args.get('visitante', '')
-    p = pronostico(local, visitante)
-    return jsonify(p) if p else jsonify({'error': 'Error'}), 404
+    resultado = pronostico(local, visitante)
+    if resultado:
+        return jsonify(resultado)
+    return jsonify({'error': 'Error en el pronóstico'}), 404
 
 @app.route('/api/historial')
 def api_historial():
-    e1, e2 = request.args.get('eq1', ''), request.args.get('eq2', '')
-    h = obtener_historial(e1, e2)
-    return jsonify(h) if h else jsonify({'error': 'No hay historial'}), 404
+    e1 = request.args.get('eq1', '')
+    e2 = request.args.get('eq2', '')
+    historial = obtener_historial(e1, e2)
+    if historial:
+        return jsonify(historial)
+    return jsonify({'error': f'No hay historial entre {e1} y {e2}'}), 404
 
 @app.route('/jugador')
 def jugador():
-    return render_template_string(HTML_JUGADOR)
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head><title>Buscador de Jugadores</title><style>body{font-family:Arial;background:#1a1a2e;color:white;padding:20px;}</style></head>
+    <body>
+    <h1>🔍 Buscador de Jugadores</h1>
+    <input type="text" id="search" placeholder="Ej: Messi, Ronaldo...">
+    <button onclick="buscar()">Buscar</button>
+    <div id="resultado"></div>
+    <script>
+        function buscar() {
+            let nombre = document.getElementById('search').value;
+            if (nombre.length<2){alert("Mínimo 2 caracteres");return;}
+            fetch('/api/jugador/buscar?nombre='+encodeURIComponent(nombre))
+                .then(r=>r.json())
+                .then(data=>{
+                    let div=document.getElementById('resultado');
+                    if(data.error){div.innerHTML='<p>'+data.error+'</p>';}
+                    else{div.innerHTML='<h3>'+data.player+'</h3><p>Goles: '+data.goals+'</p><p>Asistencias: '+data.assists+'</p><p>Rating: '+data.rating+'</p>';}
+                });
+        }
+    </script>
+    </body>
+    </html>
+    """
 
 @app.route('/eliminatorias')
 def eliminatorias():
-    return "<h1>Eliminatorias</h1><p>Próximamente</p>"
+    return "<h1>🌍 Eliminatorias</h1><p>Próximamente más información</p>"
 
 @app.route('/resultados')
 def resultados():
-    return "<h1>Resultados</h1><p>Próximamente</p>"
+    return "<h1>📋 Resultados</h1><p>Próximamente más información</p>"
 
 @app.route('/api/odds')
 def api_odds():
@@ -309,7 +471,17 @@ def api_odds():
 
 @app.route('/api/jugador/buscar')
 def api_buscar_jugador():
-    return jsonify({'error': 'No encontrado'}), 404
+    nombre = request.args.get('nombre', '').lower()
+    # Datos de ejemplo para jugadores famosos
+    jugadores = {
+        'messi': {'player': 'Lionel Messi', 'team': 'Inter Miami', 'goals': 12, 'assists': 8, 'rating': 8.5},
+        'cristiano': {'player': 'Cristiano Ronaldo', 'team': 'Al Nassr', 'goals': 28, 'assists': 6, 'rating': 7.9},
+        'mbappe': {'player': 'Kylian Mbappé', 'team': 'Real Madrid', 'goals': 15, 'assists': 5, 'rating': 8.2},
+    }
+    for key, data in jugadores.items():
+        if key in nombre:
+            return jsonify(data)
+    return jsonify({'error': 'Jugador no encontrado'}), 404
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
