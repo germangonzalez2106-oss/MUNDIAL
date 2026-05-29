@@ -297,13 +297,7 @@ HTML = """
         .card h3 { font-size: 2em; color: #4CAF50; }
         .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
         .chart-box { background: #0f3460; padding: 15px; border-radius: 15px; }
-        canvas {
-    max-width: 100%;
-    min-height: 300px;
-    height: auto !important;
-    background: rgba(0,0,0,0.2);
-    border-radius: 10px;
-}
+        canvas { max-height: 250px; width: 100% !important; }
         select, button, input {
             padding: 10px 20px;
             border-radius: 25px;
@@ -346,13 +340,9 @@ HTML = """
     </div>
     
     <div class="charts">
-        <div class="chart-box">
-    <h3>⭐ Rating Promedio</h3>
-<canvas id="ratingChart" width="800" height="400" style="width:100%; height:400px; background:#0a0a2a; border:2px solid #4CAF50; display:block;"></canvas></div>
-<div class="chart-box">
-    <h3>⚽ Goles Totales</h3>
-<canvas id="golesChart" width="800" height="400" style="width:100%; height:400px; background:#0a0a2a; border:2px solid #2196F3; display:block;"></canvas></div>
-    
+        <div class="chart-box"><h3>⭐ Rating Promedio</h3><canvas id="ratingChart"></canvas></div>
+        <div class="chart-box"><h3>⚽ Goles Totales</h3><canvas id="golesChart"></canvas></div>
+    </div>
     
     <!-- Pronóstico -->
     <h2>🔮 Pronóstico</h2>
@@ -519,11 +509,8 @@ HTML = """
             });
     }
     
-   document.addEventListener('DOMContentLoaded', function() {
-        console.log("DOM cargado, inicializando...");
-        cargarGraficos();
-        cargarCuotas();
-    });
+    cargarGraficos();
+    setTimeout(cargarCuotas, 500);
 </script>
 </body>
 </html>
@@ -780,13 +767,7 @@ HTML_RESULTADOS = """
                 div.innerHTML = html;
             });
     }
-
-    
-    
-
 </script>
-
-
 </body>
 </html>
 """
