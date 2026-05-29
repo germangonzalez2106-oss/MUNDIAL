@@ -681,6 +681,7 @@ HTML = """
         <a href="/">🏆 Ranking</a>
         <a href="/jugador">🔍 Jugadores</a>
         <a href="/eliminatorias">🌍 Eliminatorias</a>
+        <a href="/resultados">📋 Resultados</a>
     </div>
     
     <h1>🏆 Mundial 2026</h1>
@@ -694,15 +695,15 @@ HTML = """
     </div>
     
     <div class="charts">
-    <div class="chart-box">
-        <h3>⭐ Top 10 - Rating Promedio</h3>
-        <canvas id="ratingChart" width="400" height="250" style="max-height: 250px; width: 100%;"></canvas>
+        <div class="chart-box">
+            <h3>⭐ Top 10 - Rating Promedio</h3>
+            <canvas id="ratingChart" width="400" height="250" style="max-height: 250px; width: 100%;"></canvas>
+        </div>
+        <div class="chart-box">
+            <h3>⚽ Top 10 - Goles Totales</h3>
+            <canvas id="golesChart" width="400" height="250" style="max-height: 250px; width: 100%;"></canvas>
+        </div>
     </div>
-    <div class="chart-box">
-        <h3>⚽ Top 10 - Goles Totales</h3>
-        <canvas id="golesChart" width="400" height="250" style="max-height: 250px; width: 100%;"></canvas>
-    </div>
-</div>
     
     <!-- Pronóstico -->
     <h2>🔮 Pronóstico</h2>
@@ -732,7 +733,7 @@ HTML = """
     <!-- Ranking -->
     <h2>📋 Ranking</h2>
     <table>
-        <thead><tr><th>#</th><th>Selección</th><th>Jugadores</th><th>Goles</th><th>Rating</th></tr></thead>
+        <thead>运转<th>#</th><th>Selección</th><th>Jugadores</th><th>Goles</th><th>Rating</th></tr></thead>
         <tbody>{% for s in selecciones %}
         <tr><td>{{ loop.index }}</td><td><strong>{{ s.nombre }}</strong></td><td>{{ s.jugadores }}</td><td>{{ s.goles_total }}</td><td>{{ s.rating_promedio }}</td></tr>
         {% endfor %}</tbody>
@@ -743,7 +744,6 @@ HTML = """
     let ratingChart, golesChart;
     
     function cargarGraficos() {
-        // Verificar que los canvas existen
         const canvasRating = document.getElementById('ratingChart');
         const canvasGoles = document.getElementById('golesChart');
         
@@ -755,13 +755,11 @@ HTML = """
         fetch('/api/selecciones')
             .then(r => r.json())
             .then(data => {
-                // Filtrar solo selecciones con rating_promedio > 0
                 let seleccionesConRating = data.filter(s => s.rating_promedio > 0);
                 let topRating = [...seleccionesConRating].sort((a,b) => b.rating_promedio - a.rating_promedio).slice(0, 10);
                 
-                let ctx1 = canvasRating.getContext('2d');
                 if (ratingChart) ratingChart.destroy();
-                ratingChart = new Chart(ctx1, {
+                ratingChart = new Chart(canvasRating, {
                     type: 'bar',
                     data: {
                         labels: topRating.map(t => t.nombre),
@@ -770,36 +768,20 @@ HTML = """
                             data: topRating.map(t => t.rating_promedio),
                             backgroundColor: 'rgba(76, 175, 80, 0.7)',
                             borderColor: 'rgba(76, 175, 80, 1)',
-                            borderWidth: 1,
-                            borderRadius: 10
+                            borderWidth: 1
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: true,
-                        plugins: {
-                            legend: { labels: { color: 'white' } },
-                            tooltip: { callbacks: { label: function(ctx) { return ctx.raw.toFixed(2); } } }
-                        },
-                        scales: {
-                            y: { 
-                                ticks: { color: 'white' },
-                                grid: { color: 'rgba(255,255,255,0.1)' },
-                                title: { display: true, text: 'Rating', color: 'white' }
-                            },
-                            x: { 
-                                ticks: { color: 'white', rotation: 45, font: { size: 10 } },
-                                grid: { display: false }
-                            }
-                        }
+                        plugins: { legend: { labels: { color: 'white' } } },
+                        scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white', rotation: 45 } } }
                     }
                 });
                 
-                // Top 10 por goles (sin filtrar)
                 let topGoles = [...data].sort((a,b) => b.goles_total - a.goles_total).slice(0, 10);
-                let ctx2 = canvasGoles.getContext('2d');
                 if (golesChart) golesChart.destroy();
-                golesChart = new Chart(ctx2, {
+                golesChart = new Chart(canvasGoles, {
                     type: 'bar',
                     data: {
                         labels: topGoles.map(t => t.nombre),
@@ -808,39 +790,19 @@ HTML = """
                             data: topGoles.map(t => t.goles_total),
                             backgroundColor: 'rgba(33, 150, 243, 0.7)',
                             borderColor: 'rgba(33, 150, 243, 1)',
-                            borderWidth: 1,
-                            borderRadius: 10
+                            borderWidth: 1
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: true,
-                        plugins: {
-                            legend: { labels: { color: 'white' } },
-                            tooltip: { callbacks: { label: function(ctx) { return ctx.raw.toFixed(0); } } }
-                        },
-                        scales: {
-                            y: { 
-                                ticks: { color: 'white' },
-                                grid: { color: 'rgba(255,255,255,0.1)' },
-                                title: { display: true, text: 'Goles', color: 'white' }
-                            },
-                            x: { 
-                                ticks: { color: 'white', rotation: 45, font: { size: 10 } },
-                                grid: { display: false }
-                            }
-                        }
+                        plugins: { legend: { labels: { color: 'white' } } },
+                        scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white', rotation: 45 } } }
                     }
                 });
             })
             .catch(error => console.error('Error cargando gráficos:', error));
     }
-    
-    // Esperar a que el DOM esté completamente cargado
-    document.addEventListener('DOMContentLoaded', function() {
-        cargarGraficos();
-    });
-</script>
     
     function calcularPronostico() {
         let local = document.getElementById('eqLocal').value;
@@ -858,27 +820,34 @@ HTML = """
                     <div class="stat-card"><div class="big-number">${data.empate}%</div><div>🤝 Empate</div></div>
                     <div class="stat-card"><div class="big-number">${data.visitante}%</div><div>✈️ ${visitante}</div></div>
                 </div><div style="background:#1a1a2e;padding:15px;border-radius:10px;text-align:center">${data.recomendacion}</div>`;
-            });
+            })
+            .catch(e => div.innerHTML = '<p>Error al calcular pronóstico</p>');
     }
     
     function cargarCuotas() {
         let div = document.getElementById('cuotasResultado');
-        div.innerHTML = '<p>Cargando...</p>';
-        fetch('/api/odds').then(r=>r.json()).then(data=>{
-            if (!data.success || data.games.length===0) { div.innerHTML = '<p>No hay partidos</p>'; return; }
-            let html = '';
-            for (let g of data.games.slice(0,8)) {
-                html += `<div style="background:#0f3460;margin-bottom:10px;padding:15px;border-radius:10px;">
-                    <strong>${g.home_team} 🆚 ${g.away_team}</strong>
-                    <div class="grid-3" style="margin-top:10px">
-                        <div class="stat-card">🏠 Local<br><span class="big-number">${g.cuotas.home>0?g.cuotas.home.toFixed(2):'N/A'}</span><br><small>${g.mejores_casas.home}</small></div>
-                        <div class="stat-card">🤝 Empate<br><span class="big-number">${g.cuotas.draw>0?g.cuotas.draw.toFixed(2):'N/A'}</span><br><small>${g.mejores_casas.draw}</small></div>
-                        <div class="stat-card">✈️ Visitante<br><span class="big-number">${g.cuotas.away>0?g.cuotas.away.toFixed(2):'N/A'}</span><br><small>${g.mejores_casas.away}</small></div>
-                    </div>
-                </div>`;
-            }
-            div.innerHTML = html;
-        }).catch(e=>div.innerHTML='<p>Error</p>');
+        div.innerHTML = '<p>Cargando cuotas...</p>';
+        fetch('/api/odds')
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success || data.games.length === 0) {
+                    div.innerHTML = '<p>No hay partidos disponibles</p>';
+                    return;
+                }
+                let html = '';
+                for (let g of data.games.slice(0, 8)) {
+                    html += `<div style="background:#0f3460;margin-bottom:10px;padding:15px;border-radius:10px;">
+                        <strong>${g.home_team} 🆚 ${g.away_team}</strong>
+                        <div class="grid-3" style="margin-top:10px">
+                            <div class="stat-card">🏠 Local<br><span class="big-number">${g.cuotas.home>0 ? g.cuotas.home.toFixed(2) : 'N/A'}</span><br><small>${g.mejores_casas.home}</small></div>
+                            <div class="stat-card">🤝 Empate<br><span class="big-number">${g.cuotas.draw>0 ? g.cuotas.draw.toFixed(2) : 'N/A'}</span><br><small>${g.mejores_casas.draw}</small></div>
+                            <div class="stat-card">✈️ Visitante<br><span class="big-number">${g.cuotas.away>0 ? g.cuotas.away.toFixed(2) : 'N/A'}</span><br><small>${g.mejores_casas.away}</small></div>
+                        </div>
+                    </div>`;
+                }
+                div.innerHTML = html;
+            })
+            .catch(e => div.innerHTML = '<p>Error al cargar cuotas</p>');
     }
     
     function cargarHistorial() {
@@ -899,108 +868,22 @@ HTML = """
                         <div class="stat-card">⚽ Goles ${local}<br><span class="big-number">${data.goles_local}</span></div>
                         <div class="stat-card">⚽ Goles ${visitante}<br><span class="big-number">${data.goles_visitante}</span></div>
                     </div>
-                    <h4>📋 Partidos</h4><table style="width:100%"><thead><tr><th>Fecha</th><th>Competición</th><th>Resultado</th></tr></thead><tbody>`;
+                    <h4>📋 Partidos</h4>
+                    <table style="width:100%"><thead><tr><th>Fecha</th><th>Competición</th><th>Resultado</th></tr></thead><tbody>`;
                 for (let p of data.partidos) {
                     html += `<tr><td>${p.fecha}</td><td>${p.competicion}</td><td>${p.resultado}</td></tr>`;
                 }
                 html += `</tbody></table></div>`;
                 div.innerHTML = html;
-            });
+            })
+            .catch(e => div.innerHTML = '<p>Error al cargar historial</p>');
     }
     
-    cargarGraficos();
-    setTimeout(cargarCuotas, 500);
+    document.addEventListener('DOMContentLoaded', function() {
+        cargarGraficos();
+        cargarCuotas();
+    });
 </script>
-</body>
-</html>
-"""
-
-# ==================== PÁGINA ELIMINATORIAS ====================
-HTML_ELIMINATORIAS = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Eliminatorias - Mundial 2026</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box;}
-        body{font-family:'Segoe UI',Arial,sans-serif;background:#1a1a2e;color:white;padding:20px;}
-        .container{max-width:1000px;margin:0 auto;}
-        h1{text-align:center;color:#4CAF50;margin-bottom:20px;}
-        h2{margin:20px 0 10px;color:#FFC107;}
-        .nav{text-align:center;margin-bottom:20px;}
-        .nav a{color:#4CAF50;text-decoration:none;margin:0 10px;padding:8px 20px;background:#0f3460;border-radius:25px;}
-        .continente{background:#0f3460;border-radius:15px;padding:20px;margin-bottom:20px;}
-        .continente h3{color:#4CAF50;margin-bottom:15px;}
-        .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:10px 0;}
-        .badge{background:#1a1a2e;padding:8px;border-radius:10px;text-align:center;}
-        .badge.green{background:#1a3a2e;border-left:3px solid #4CAF50;}
-        table{width:100%;background:#1a1a2e;border-radius:10px;border-collapse:collapse;}
-        th,td{padding:8px;text-align:left;}
-        th{color:#4CAF50;}
-    </style>
-</head>
-<body>
-<div class="container">
-    <div class="nav"><a href="/">🏆 Ranking</a><a href="/jugador">🔍 Jugadores</a><a href="/eliminatorias">🌍 Eliminatorias</a></div>
-    <h1>🌍 Eliminatorias por Continente</h1>
-    
-    <div class="continente">
-        <h3>🏆 Sudamérica (CONMEBOL)</h3>
-        <div class="grid">
-            <div class="badge green">✅ Clasificados: Argentina, Ecuador, Uruguay, Colombia, Brasil, Paraguay</div>
-            <div class="badge">🔄 Repechaje: Bolivia</div>
-            <div class="badge">❌ Eliminados: Venezuela, Perú, Chile</div>
-        </div>
-        <p><strong>⭐ Máximo goleador:</strong> Lionel Messi (8 goles)</p>
-        <p><strong>📅 Fecha final:</strong> 10 de septiembre de 2025</p>
-        <h4>Tabla de posiciones:</h4>
-        <table><th>Pos</th><th>Equipo</th><th>Pts</th></tr>
-        <tr><td>1</td><td>Argentina</td><td>38</td></tr>
-        <tr><td>2</td><td>Ecuador</td><td>29</td></tr>
-        <tr><td>3</td><td>Colombia</td><td>28</td></tr>
-        <tr><td>4</td><td>Uruguay</td><td>28</td></tr>
-        <tr><td>5</td><td>Brasil</td><td>28</td></tr>
-        <tr><td>6</td><td>Paraguay</td><td>25</td></tr>
-        </table>
-    </div>
-    
-    <div class="continente">
-        <h3>⚽ Europa (UEFA)</h3>
-        <div class="grid">
-            <div class="badge green">✅ Clasificados directos: España, Francia, Alemania, Inglaterra, Países Bajos, Croacia, Portugal, Escocia, Austria, Bélgica, Suiza, Noruega</div>
-            <div class="badge">🔄 Repechaje: Bosnia, República Checa, Suecia, Turquía</div>
-        </div>
-        <p><strong>📅 Fecha final:</strong> 31 de marzo de 2026</p>
-    </div>
-    
-    <div class="continente">
-        <h3>🦁 África (CAF)</h3>
-        <div class="grid">
-            <div class="badge green">✅ Clasificados: Sudáfrica, Egipto, Marruecos, Argelia, Costa de Marfil, Ghana</div>
-        </div>
-        <p><strong>📅 Fecha final:</strong> 14 de octubre de 2025</p>
-        <p><strong>🎉 Destacado:</strong> Sudáfrica vuelve a un Mundial después de 16 años</p>
-    </div>
-    
-    <div class="continente">
-        <h3>🐉 Asia (AFC)</h3>
-        <div class="grid">
-            <div class="badge green">✅ Clasificados: Corea del Sur, Japón, Irán, Australia, Arabia Saudita, Uzbekistán, Qatar, Jordania</div>
-        </div>
-        <p><strong>🎉 Destacado:</strong> Corea del Sur clasificó invicta (20 goles a favor, 1 en contra)</p>
-    </div>
-    
-    <div class="continente">
-        <h3>🌎 Norteamérica (CONCACAF)</h3>
-        <div class="grid">
-            <div class="badge green">✅ Clasificados: México, Canadá, Estados Unidos, Panamá</div>
-        </div>
-        <p><strong>📅 Fecha final:</strong> 18 de noviembre de 2025</p>
-        <p><strong>🎉 Destacado:</strong> Canadá y México clasificaron como anfitriones</p>
-    </div>
-</div>
 </body>
 </html>
 """
