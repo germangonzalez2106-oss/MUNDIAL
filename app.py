@@ -771,6 +771,253 @@ HTML_RESULTADOS = """
 </body>
 </html>
 """
+# ==================== PÁGINA DE ESTADÍSTICAS DE JUGADORES ====================
+HTML_ESTADISTICAS_JUGADOR = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Estadísticas de {{ jugador.nombre }}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            padding: 20px;
+        }
+        .container { max-width: 1000px; margin: 0 auto; }
+        h1 { text-align: center; color: #4CAF50; margin-bottom: 10px; }
+        .nav { text-align: center; margin-bottom: 20px; }
+        .nav a { color: #4CAF50; text-decoration: none; margin: 0 10px; padding: 8px 20px; background: #0f3460; border-radius: 25px; display: inline-block; }
+        .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px 0; }
+        .stat-card { background: #1a1a2e; padding: 15px; border-radius: 10px; text-align: center; }
+        .stat-number { font-size: 2.5em; font-weight: bold; color: #FFC107; }
+        .stat-label { color: #aaa; margin-top: 5px; }
+        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 20px 0; }
+        .chart-box { background: #1a1a2e; padding: 15px; border-radius: 10px; }
+        canvas { max-height: 300px; width: 100% !important; }
+        .btn-back { display: inline-block; background: #4CAF50; color: white; padding: 10px 20px; border-radius: 25px; text-decoration: none; margin-top: 10px; }
+        .badge { background: #4CAF50; padding: 5px 10px; border-radius: 20px; font-size: 0.8em; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 10px; text-align: center; border-bottom: 1px solid #2a2a4e; }
+        th { background: #4CAF50; }
+        tr:hover { background: #1a2a4e; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="nav">
+        <a href="/">🏆 Ranking</a>
+        <a href="/jugador">🔍 Buscador</a>
+        <a href="/eliminatorias">🌍 Eliminatorias</a>
+        <a href="/resultados">📋 Resultados</a>
+        <a href="/top_jugadores">⭐ Top Jugadores</a>
+    </div>
+    
+    <div class="card">
+        <h1>⚽ {{ jugador.nombre }}</h1>
+        <p style="text-align:center">
+            <span class="badge">{{ jugador.seleccion }}</span>
+            <span class="badge" style="background:#2196F3">{{ jugador.equipo }}</span>
+            <span class="badge" style="background:#FF9800">{{ jugador.liga }}</span>
+        </p>
+    </div>
+    
+    <div class="stats-grid">
+        <div class="stat-card"><div class="stat-number">{{ jugador.partidos }}</div><div class="stat-label">Partidos</div></div>
+        <div class="stat-card"><div class="stat-number">{{ jugador.minutos }}</div><div class="stat-label">Minutos</div></div>
+        <div class="stat-card"><div class="stat-number">{{ jugador.goles }}</div><div class="stat-label">Goles</div></div>
+        <div class="stat-card"><div class="stat-number">{{ jugador.asistencias }}</div><div class="stat-label">Asistencias</div></div>
+        <div class="stat-card"><div class="stat-number">{{ jugador.rating }}</div><div class="stat-label">Rating</div></div>
+    </div>
+    
+    <div class="charts-grid">
+        <div class="chart-box">
+            <h3 style="text-align:center">🎯 Tiros</h3>
+            <canvas id="tirosChart"></canvas>
+        </div>
+        <div class="chart-box">
+            <h3 style="text-align:center">📊 Rendimiento</h3>
+            <canvas id="rendimientoChart"></canvas>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h3>📋 Estadísticas completas</h3>
+        <table>
+            <tr><th>Métrica</th><th>Valor</th><th>Promedio por partido</th></tr>
+            <tr><td>Tiros totales</td><td>{{ jugador.tiros_totales|default(0) }}</td><td>{{ (jugador.tiros_totales|default(0) / jugador.partidos)|round(1) }}</td></tr>
+            <tr><td>Tiros a puerta</td><td>{{ jugador.tiros_puerta|default(0) }}</td><td>{{ (jugador.tiros_puerta|default(0) / jugador.partidos)|round(1) }}</td></tr>
+            <tr><td>Pases clave</td><td>{{ jugador.pases_clave|default(0) }}</td><td>{{ (jugador.pases_clave|default(0) / jugador.partidos)|round(1) }}</td></tr>
+            <tr><td>Regates</td><td>{{ jugador.regates|default(0) }}</td><td>{{ (jugador.regates|default(0) / jugador.partidos)|round(1) }}</td></tr>
+            <tr><td>Entradas</td><td>{{ jugador.entradas|default(0) }}</td><td>{{ (jugador.entradas|default(0) / jugador.partidos)|round(1) }}</td></tr>
+            <tr><td>Intercepciones</td><td>{{ jugador.intercepciones|default(0) }}</td><td>{{ (jugador.intercepciones|default(0) / jugador.partidos)|round(1) }}</td></tr>
+        </table>
+    </div>
+    
+    <div style="text-align:center">
+        <a href="/top_jugadores" class="btn-back">← Ver todos los jugadores</a>
+        <a href="/" class="btn-back" style="background:#666">← Inicio</a>
+    </div>
+</div>
+
+<script>
+    // Gráfico de tiros
+    const ctx1 = document.getElementById('tirosChart').getContext('2d');
+    new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: ['Tiros totales', 'Tiros a puerta', 'Goles'],
+            datasets: [{
+                label: 'Cantidad',
+                data: [
+                    {{ jugador.tiros_totales|default(0) }},
+                    {{ jugador.tiros_puerta|default(0) }},
+                    {{ jugador.goles }}
+                ],
+                backgroundColor: ['#2196F3', '#4CAF50', '#FFC107'],
+                borderRadius: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { labels: { color: 'white' } } },
+            scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } }
+        }
+    });
+    
+    // Gráfico de rendimiento
+    const ctx2 = document.getElementById('rendimientoChart').getContext('2d');
+    new Chart(ctx2, {
+        type: 'radar',
+        data: {
+            labels: ['Goles', 'Asistencias', 'Pases clave', 'Regates', 'Entradas', 'Intercepciones'],
+            datasets: [{
+                label: '{{ jugador.nombre }}',
+                data: [
+                    {{ jugador.goles }},
+                    {{ jugador.asistencias }},
+                    {{ jugador.pases_clave|default(0) }},
+                    {{ jugador.regates|default(0) }},
+                    {{ jugador.entradas|default(0) }},
+                    {{ jugador.intercepciones|default(0) }}
+                ],
+                backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                borderColor: '#4CAF50',
+                borderWidth: 2,
+                pointBackgroundColor: '#4CAF50'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { labels: { color: 'white' } } },
+            scales: { r: { ticks: { color: 'white', backdropColor: 'transparent' }, grid: { color: 'rgba(255,255,255,0.2)' } } }
+        }
+    });
+</script>
+</body>
+</html>
+"""
+
+# ==================== PÁGINA TOP JUGADORES ====================
+HTML_TOP_JUGADORES = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Top Jugadores - Mundial 2026</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { text-align: center; color: #4CAF50; margin-bottom: 10px; }
+        .nav { text-align: center; margin-bottom: 20px; }
+        .nav a { color: #4CAF50; text-decoration: none; margin: 0 10px; padding: 8px 20px; background: #0f3460; border-radius: 25px; display: inline-block; }
+        .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: center; border-bottom: 1px solid #2a2a4e; }
+        th { background: #4CAF50; }
+        tr:hover { background: #1a2a4e; }
+        .btn { background: #2196F3; color: white; padding: 5px 10px; border-radius: 20px; text-decoration: none; font-size: 0.8em; }
+        .gold { color: #FFD700; }
+        .silver { color: #C0C0C0; }
+        .bronze { color: #CD7F32; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="nav">
+        <a href="/">🏆 Ranking</a>
+        <a href="/jugador">🔍 Buscador</a>
+        <a href="/eliminatorias">🌍 Eliminatorias</a>
+        <a href="/resultados">📋 Resultados</a>
+        <a href="/top_jugadores">⭐ Top Jugadores</a>
+    </div>
+    
+    <h1>⭐ Top Jugadores</h1>
+    <p style="text-align:center">Estadísticas avanzadas de los mejores jugadores</p>
+    
+    <div class="card">
+        <h3>⚽ Top Goleadores</h3>
+        <table>
+            <thead><tr><th>#</th><th>Jugador</th><th>Selección</th><th>Goles</th><th>Tiros</th><th>Efectividad</th><th>Rating</th><th></th></tr></thead>
+            <tbody>
+                {% for j in goleadores %}
+                <tr>
+                    <td>{% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}{{ loop.index }}{% endif %}</td>
+                    <td><strong>{{ j.nombre }}</strong></td>
+                    <td>{{ j.seleccion }}</td>
+                    <td>{{ j.goles }}</td>
+                    <td>{{ j.tiros_totales|default(0) }}</td>
+                    <td>{{ (j.goles / j.tiros_totales * 100)|round(1) if j.tiros_totales else 0 }}%</td>
+                    <td>{{ j.rating }}</td>
+                    <td><a href="/estadisticas_jugador/{{ j.nombre }}" class="btn">Ver</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="card">
+        <h3>🎯 Top Asistentes</h3>
+        <table>
+            <thead><tr><th>#</th><th>Jugador</th><th>Selección</th><th>Asistencias</th><th>Pases clave</th><th>Rating</th><th></th></tr></thead>
+            <tbody>
+                {% for j in asistentes %}
+                <tr>
+                    <td>{% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}{{ loop.index }}{% endif %}</td>
+                    <td><strong>{{ j.nombre }}</strong></td>
+                    <td>{{ j.seleccion }}</td>
+                    <td>{{ j.asistencias }}</td>
+                    <td>{{ j.pases_clave|default(0) }}</td>
+                    <td>{{ j.rating }}</td>
+                    <td><a href="/estadisticas_jugador/{{ j.nombre }}" class="btn">Ver</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div style="text-align:center">
+        <a href="/" class="btn" style="background:#4CAF50; padding:10px 20px;">← Volver al inicio</a>
+    </div>
+</div>
+</body>
+</html>
+"""
+
 
 # ==================== RUTAS ====================
 
@@ -847,6 +1094,40 @@ def api_partidos(seleccion):
     if partidos:
         return jsonify(partidos)
     return jsonify({'error': 'No se encontraron partidos'}), 404
+
+@app.route('/top_jugadores')
+def top_jugadores():
+    """Muestra el top de jugadores por estadísticas"""
+    from bson.json_util import dumps
+    import json
+    
+    jugadores = list(db['estadisticas_jugadores'].find({}, {'_id': 0}))
+    
+    # Ordenar por goles
+    goleadores = sorted(jugadores, key=lambda x: x.get('goles', 0), reverse=True)
+    
+    # Ordenar por asistencias
+    asistentes = sorted(jugadores, key=lambda x: x.get('asistencias', 0), reverse=True)
+    
+    return render_template_string(HTML_TOP_JUGADORES, goleadores=goleadores, asistentes=asistentes)
+
+@app.route('/estadisticas_jugador/<nombre>')
+def estadisticas_jugador(nombre):
+    """Muestra estadísticas detalladas de un jugador"""
+    jugador = db['estadisticas_jugadores'].find_one({"nombre": nombre}, {'_id': 0})
+    
+    if not jugador:
+        return f"""
+        <html>
+        <body style="background:#1a1a2e;color:white;font-family:Arial;padding:20px">
+            <h1>❌ Jugador no encontrado</h1>
+            <p>No hay estadísticas disponibles para {nombre}</p>
+            <a href="/top_jugadores">Volver al top de jugadores</a>
+        </body>
+        </html>
+        """
+    
+    return render_template_string(HTML_ESTADISTICAS_JUGADOR, jugador=jugador)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
