@@ -327,6 +327,8 @@ HTML = """
         <a href="/">🏆 Ranking</a>
         <a href="/jugador">🔍 Jugadores</a>
         <a href="/eliminatorias">🌍 Eliminatorias</a>
+        <a href="/resultados">📋 Resultados</a>
+        <a href="/top_jugadores">⭐ Top Jugadores</a>
     </div>
     
     <h1>🏆 Mundial 2026</h1>
@@ -692,6 +694,7 @@ HTML_RESULTADOS = """
         <a href="/jugador">🔍 Jugadores</a>
         <a href="/eliminatorias">🌍 Eliminatorias</a>
         <a href="/resultados">📋 Resultados</a>
+        <a href="/top_jugadores">⭐ Top Jugadores</a>
     </div>
     <h1>📋 Resultados de Eliminatorias</h1>
     
