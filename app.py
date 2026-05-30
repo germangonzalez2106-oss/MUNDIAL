@@ -771,7 +771,7 @@ HTML_RESULTADOS = """
 </body>
 </html>
 """
-# ==================== PÁGINA DE ESTADÍSTICAS DE JUGADORES ====================
+# ==================== PÁGINA ESTADÍSTICAS JUGADOR ====================
 HTML_ESTADISTICAS_JUGADOR = """
 <!DOCTYPE html>
 <html>
@@ -866,7 +866,6 @@ HTML_ESTADISTICAS_JUGADOR = """
 </div>
 
 <script>
-    // Gráfico de tiros
     const ctx1 = document.getElementById('tirosChart').getContext('2d');
     new Chart(ctx1, {
         type: 'bar',
@@ -874,24 +873,14 @@ HTML_ESTADISTICAS_JUGADOR = """
             labels: ['Tiros totales', 'Tiros a puerta', 'Goles'],
             datasets: [{
                 label: 'Cantidad',
-                data: [
-                    {{ jugador.tiros_totales|default(0) }},
-                    {{ jugador.tiros_puerta|default(0) }},
-                    {{ jugador.goles }}
-                ],
+                data: [{{ jugador.tiros_totales|default(0) }}, {{ jugador.tiros_puerta|default(0) }}, {{ jugador.goles }}],
                 backgroundColor: ['#2196F3', '#4CAF50', '#FFC107'],
                 borderRadius: 10
             }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: { legend: { labels: { color: 'white' } } },
-            scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } }
-        }
+        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: 'white' } } }, scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } } }
     });
     
-    // Gráfico de rendimiento
     const ctx2 = document.getElementById('rendimientoChart').getContext('2d');
     new Chart(ctx2, {
         type: 'radar',
@@ -899,26 +888,14 @@ HTML_ESTADISTICAS_JUGADOR = """
             labels: ['Goles', 'Asistencias', 'Pases clave', 'Regates', 'Entradas', 'Intercepciones'],
             datasets: [{
                 label: '{{ jugador.nombre }}',
-                data: [
-                    {{ jugador.goles }},
-                    {{ jugador.asistencias }},
-                    {{ jugador.pases_clave|default(0) }},
-                    {{ jugador.regates|default(0) }},
-                    {{ jugador.entradas|default(0) }},
-                    {{ jugador.intercepciones|default(0) }}
-                ],
+                data: [{{ jugador.goles }}, {{ jugador.asistencias }}, {{ jugador.pases_clave|default(0) }}, {{ jugador.regates|default(0) }}, {{ jugador.entradas|default(0) }}, {{ jugador.intercepciones|default(0) }}],
                 backgroundColor: 'rgba(76, 175, 80, 0.2)',
                 borderColor: '#4CAF50',
                 borderWidth: 2,
                 pointBackgroundColor: '#4CAF50'
             }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: { legend: { labels: { color: 'white' } } },
-            scales: { r: { ticks: { color: 'white', backdropColor: 'transparent' }, grid: { color: 'rgba(255,255,255,0.2)' } } }
-        }
+        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: 'white' } } }, scales: { r: { ticks: { color: 'white', backdropColor: 'transparent' }, grid: { color: 'rgba(255,255,255,0.2)' } } } }
     });
 </script>
 </body>
@@ -993,7 +970,9 @@ HTML_TOP_JUGADORES = """
     <div class="card">
         <h3>🎯 Top Asistentes</h3>
         <table>
-            <thead><tr><th>#</th><th>Jugador</th><th>Selección</th><th>Asistencias</th><th>Pases clave</th><th>Rating</th><th></th></tr></thead>
+            <thead>
+                <tr><th>#</th><th>Jugador</th><th>Selección</th><th>Asistencias</th><th>Pases clave</th><th>Rating</th><th></th></tr>
+            </thead>
             <tbody>
                 {% for j in asistentes %}
                 <tr>
@@ -1109,7 +1088,9 @@ def top_jugadores():
     # Ordenar por asistencias
     asistentes = sorted(jugadores, key=lambda x: x.get('asistencias', 0), reverse=True)
     
+   
     return render_template_string(HTML_TOP_JUGADORES, goleadores=goleadores, asistentes=asistentes)
+
 
 @app.route('/estadisticas_jugador/<nombre>')
 def estadisticas_jugador(nombre):
