@@ -2,7 +2,7 @@ import os
 import requests
 from flask import Flask, request, jsonify, render_template_string
 from pymongo import MongoClient
-import joblib
+
 
 app = Flask(__name__)
 
@@ -23,14 +23,16 @@ modelo_ml = None
 scaler_ml = None
 
 try:
-    # Verificar que los archivos existen
+    import joblib
     if os.path.exists('modelo_pronostico.pkl') and os.path.exists('scaler.pkl'):
         modelo_ml = joblib.load('modelo_pronostico.pkl')
         scaler_ml = joblib.load('scaler.pkl')
         ML_DISPONIBLE = True
         print("✅ Modelo ML cargado correctamente")
     else:
-        print("⚠️ Archivos del modelo ML no encontrados, usando pronóstico tradicional")
+        print("⚠️ Archivos del modelo ML no encontrados")
+except ImportError:
+    print("⚠️ Librería joblib no disponible, ejecutando sin modelo ML")
 except Exception as e:
     print(f"⚠️ Error cargando modelo ML: {e}")
 
