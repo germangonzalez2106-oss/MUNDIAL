@@ -2,6 +2,7 @@ import os
 import requests
 from flask import Flask, request, jsonify, render_template_string
 from pymongo import MongoClient
+import joblib
 
 app = Flask(__name__)
 
@@ -15,6 +16,17 @@ try:
 except Exception as e:
     print(f"❌ Error: {e}")
     coleccion = None
+
+# ==================== CARGAR MODELO ML ====================
+# Intentar cargar el modelo ML si existe
+try:
+    modelo_ml = joblib.load('modelo_pronostico.pkl')
+    scaler_ml = joblib.load('scaler.pkl')
+    print("✅ Modelo ML cargado correctamente")
+    ML_DISPONIBLE = True
+except:
+    print("⚠️ Modelo ML no disponible, usando pronóstico tradicional")
+    ML_DISPONIBLE = False
 
 # ==================== JUGADORES MANUALES ====================
 JUGADORES_MANUALES = {
@@ -270,6 +282,76 @@ def pronostico(local, visitante):
     else: rec = f"🤝 Apostar al empate - Prob: {probE}%"
     return {'local': prob1, 'empate': probE, 'visitante': prob2, 'recomendacion': rec}
 
+def pronostico_ml(local, visitante):
+    """Pronóstico usando Machine Learning"""
+    if not ML_DISPONIBLE:
+        return None
+    
+    # Obtener datos de las selecciones
+    selecciones = obtener_selecciones()
+    
+    d1 = next((s for s in selecciones if s.get('nombre') == local), None)
+    d2 = next((s for s in selecciones if s.get('nombre') == visitante), None)
+    
+    if not d1 or not d2:
+        return None
+    
+    # Preparar características para el modelo
+    ranking_local = d1.get('ranking_fifa', 15)
+    ranking_visitante = d2.get('ranking_fifa', 15)
+    
+    # Calcular fuerza
+    fuerza_local = max(0, (100 - ranking_local) / 100)
+    fuerza_visitante = max(0, (100 - ranking_visitante) / 100)
+    
+    # Otras características
+    diferencia_fuerza = fuerza_local - fuerza_visitante
+    diferencia_fuerza_abs = abs(diferencia_fuerza)
+    prob_local_base = fuerza_local / (fuerza_local + fuerza_visitante + 0.01)
+    prob_visitante_base = fuerza_visitante / (fuerza_local + fuerza_visitante + 0.01)
+    diferencia_ranking = ranking_visitante - ranking_local
+    goles_prom_local = d1.get('goles_total', 30) / max(1, d1.get('jugadores', 20)) / 5
+    goles_prom_visit = d2.get('goles_total', 30) / max(1, d2.get('jugadores', 20)) / 5
+    ratio_goles = goles_prom_local / (goles_prom_visit + 0.1)
+    
+    # Crear vector de características (16 features)
+    features = {
+        'ranking_local': ranking_local,
+        'ranking_visitante': ranking_visitante,
+        'fuerza_local': fuerza_local,
+        'fuerza_visitante': fuerza_visitante,
+        'diferencia_fuerza': diferencia_fuerza,
+        'diferencia_fuerza_abs': diferencia_fuerza_abs,
+        'prob_local_base': prob_local_base,
+        'prob_visitante_base': prob_visitante_base,
+        'ratio_goles': ratio_goles,
+        'diferencia_ranking': diferencia_ranking,
+        'rank_cat_ligera_ventaja_local': 1 if -10 < diferencia_ranking <= 0 else 0,
+        'rank_cat_ligera_ventaja_visitante': 1 if 0 < diferencia_ranking <= 10 else 0,
+        'rank_cat_mucha_ventaja_local': 1 if diferencia_ranking <= -20 else 0,
+        'rank_cat_mucha_ventaja_visitante': 1 if diferencia_ranking >= 20 else 0,
+        'rank_cat_ventaja_local': 1 if -20 < diferencia_ranking <= -10 else 0,
+        'rank_cat_ventaja_visitante': 1 if 10 < diferencia_ranking <= 20 else 0,
+    }
+    
+    # Convertir a DataFrame y escalar
+    import pandas as pd
+    features_df = pd.DataFrame([features])
+    
+    # Asegurar el orden correcto de las columnas
+    columnas_orden = scaler_ml.feature_names_in_
+    features_df = features_df[columnas_orden]
+    
+    features_scaled = scaler_ml.transform(features_df)
+    prob = modelo_ml.predict_proba(features_scaled)[0]
+    
+    return {
+        'local': round(prob[0] * 100, 1),
+        'empate': round(prob[1] * 100, 1),
+        'visitante': round(prob[2] * 100, 1),
+        'modelo': 'ML (XGBoost)'
+    }
+
 # ==================== HTML ====================
 HTML = """
 <!DOCTYPE html>
@@ -346,15 +428,16 @@ HTML = """
         <div class="chart-box"><h3>⚽ Goles Totales</h3><canvas id="golesChart"></canvas></div>
     </div>
     
-    <!-- Pronóstico -->
-    <h2>🔮 Pronóstico</h2>
-    <div class="flex">
-        <select id="eqLocal"><option value="">Local</option>{% for s in selecciones %}<option>{{ s.nombre }}</option>{% endfor %}</select>
-        <span>VS</span>
-        <select id="eqVisitante"><option value="">Visitante</option>{% for s in selecciones %}<option>{{ s.nombre }}</option>{% endfor %}</select>
-        <button class="btn-orange" onclick="calcularPronostico()">🔮 Calcular</button>
-    </div>
-    <div id="pronosticoResultado" class="results"></div>
+   <!-- Pronóstico -->
+<h2>🔮 Pronóstico</h2>
+<div class="flex">
+    <select id="eqLocal"><option value="">Local</option>{% for s in selecciones %}<option>{{ s.nombre }}</option>{% endfor %}</select>
+    <span>VS</span>
+    <select id="eqVisitante"><option value="">Visitante</option>{% for s in selecciones %}<option>{{ s.nombre }}</option>{% endfor %}</select>
+    <button class="btn-orange" onclick="calcularPronostico()">🔮 Calcular</button>
+    <button class="btn-blue" onclick="calcularPronosticoML()">🤖 ML</button>
+</div>
+<div id="pronosticoResultado" class="results"></div>
     
     <!-- Cuotas -->
     <h2>📊 Cuotas Tiempo Real</h2>
@@ -464,6 +547,30 @@ HTML = """
             });
     }
     
+function calcularPronosticoML() {
+    let local = document.getElementById('eqLocal').value;
+    let visitante = document.getElementById('eqVisitante').value;
+    if (!local || !visitante) { alert("Selecciona dos equipos"); return; }
+    if (local === visitante) { alert("Equipos diferentes"); return; }
+    let div = document.getElementById('pronosticoResultado');
+    div.innerHTML = '<p>Cargando pronóstico ML...</p>';
+    div.style.display = 'block';
+    fetch('/api/pronostico_ml?local='+encodeURIComponent(local)+'&visitante='+encodeURIComponent(visitante))
+        .then(r=>r.json())
+        .then(data=>{
+            div.innerHTML = `<div class="grid-3">
+                <div class="stat-card"><div class="big-number">${data.local}%</div><div>🏠 ${local}</div></div>
+                <div class="stat-card"><div class="big-number">${data.empate}%</div><div>🤝 Empate</div></div>
+                <div class="stat-card"><div class="big-number">${data.visitante}%</div><div>✈️ ${visitante}</div></div>
+            </div>
+            <div style="background:#1a1a2e;padding:15px;border-radius:10px;text-align:center">
+                🤖 Pronóstico con Machine Learning<br>
+                <small>Modelo XGBoost entrenado con 5000 partidos</small>
+            </div>`;
+        })
+        .catch(e => div.innerHTML = '<p>Error al calcular pronóstico ML</p>');
+}
+
     function cargarCuotas() {
         let div = document.getElementById('cuotasResultado');
         div.innerHTML = '<p>Cargando...</p>';
@@ -1152,6 +1259,15 @@ def top_jugadores():
         </body>
         </html>
         """, 500
+
+@app.route('/api/pronostico_ml')
+def api_pronostico_ml():
+    local = request.args.get('local', '')
+    visitante = request.args.get('visitante', '')
+    p = pronostico_ml(local, visitante)
+    if p:
+        return jsonify(p)
+    return jsonify({'error': 'Modelo ML no disponible'}), 404
 
 
 @app.route('/estadisticas_jugador/<nombre>')
