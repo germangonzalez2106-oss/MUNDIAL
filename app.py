@@ -959,10 +959,10 @@ HTML_TOP_JUGADORES = """
                     <td>{% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}{{ loop.index }}{% endif %}</td>
                     <td><strong>{{ j.nombre }}</strong></td>
                     <td>{{ j.seleccion }}</td>
-                    <td>{{ j.goles }}</td>
+                    <td>{{ j.goles|default(0) }}</td>
                     <td>{{ j.tiros_totales|default(0) }}</td>
-                    <td>{{ (j.goles / j.tiros_totales * 100)|round(1) if j.tiros_totales else 0 }}%</td>
-                    <td>{{ j.rating }}</td>
+                    <td>{{ (j.goles|default(0) / j.tiros_totales|default(1) * 100)|round(1) if j.tiros_totales|default(0) > 0 else 0 }}%</td>
+                    <td>{{ j.rating|default(0) }}</td>
                     <td><a href="/estadisticas_jugador/{{ j.nombre }}" class="btn">Ver</a></td>
                 </tr>
                 {% endfor %}
@@ -1080,19 +1080,78 @@ def api_partidos(seleccion):
 @app.route('/top_jugadores')
 def top_jugadores():
     """Muestra el top de jugadores por estadísticas"""
-    from bson.json_util import dumps
-    import json
+    try:
+        from bson.json_util import dumps
+        import json
+        
+        # Obtener jugadores
+        jugadores = list(db['estadisticas_jugadores'].find({}, {'_id': 0}))
+        
+        if not jugadores:
+            return """
+            <html>
+            <body style="background:#1a1a2e;color:white;font-family:Arial;padding:20px">
+                <h1>⚠️ No hay datos de jugadores</h1>
+                <p>La colección 'estadisticas_jugadores' está vacía.</p>
+                <a href="/">Volver al inicio</a>
+            </body>
+            </html>
+            """
+        
+        # Función segura para obtener goles (maneja None)
+        def get_goles(j):
+            val = j.get('goles')
+            return val if isinstance(val, (int, float)) and val is not None else 0
+        
+        def get_asistencias(j):
+            val = j.get('asistencias')
+            return val if isinstance(val, (int, float)) and val is not None else 0
+        
+        def get_nombre(j):
+            return j.get('nombre', 'Desconocido')
+        
+        def get_seleccion(j):
+            return j.get('seleccion', 'N/A')
+        
+        def get_tiros_totales(j):
+            val = j.get('tiros_totales')
+            return val if isinstance(val, (int, float)) and val is not None else 0
+        
+        def get_rating(j):
+            val = j.get('rating')
+            return val if isinstance(val, (int, float)) and val is not None else 0
+        
+        # Limpiar datos: eliminar jugadores sin nombre o con valores inválidos
+        jugadores_limpios = []
+        for j in jugadores:
+            if j.get('nombre') and j.get('nombre') != 'N/A':
+                # Asegurar valores numéricos
+                j['goles'] = get_goles(j)
+                j['asistencias'] = get_asistencias(j)
+                j['tiros_totales'] = get_tiros_totales(j)
+                j['rating'] = get_rating(j)
+                jugadores_limpios.append(j)
+        
+        # Ordenar por goles
+        goleadores = sorted(jugadores_limpios, key=lambda x: x.get('goles', 0), reverse=True)
+        
+        # Ordenar por asistencias
+        asistentes = sorted(jugadores_limpios, key=lambda x: x.get('asistencias', 0), reverse=True)
+        
+        return render_template_string(HTML_TOP_JUGADORES, goleadores=goleadores, asistentes=asistentes)
     
-    jugadores = list(db['estadisticas_jugadores'].find({}, {'_id': 0}))
-    
-    # Ordenar por goles
-    goleadores = sorted(jugadores, key=lambda x: x.get('goles', 0), reverse=True)
-    
-    # Ordenar por asistencias
-    asistentes = sorted(jugadores, key=lambda x: x.get('asistencias', 0), reverse=True)
-    
-   
-    return render_template_string(HTML_TOP_JUGADORES, goleadores=goleadores, asistentes=asistentes)
+    except Exception as e:
+        import traceback
+        error_detalle = traceback.format_exc()
+        return f"""
+        <html>
+        <body style="background:#1a1a2e;color:white;font-family:Arial;padding:20px">
+            <h1>❌ Error en el servidor</h1>
+            <pre>{error_detalle}</pre>
+            <a href="/">Volver al inicio</a>
+        </body>
+        </html>
+        """, 500
 
 
 @app.route('/estadisticas_jugador/<nombre>')
