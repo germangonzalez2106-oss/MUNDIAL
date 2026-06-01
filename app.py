@@ -17,6 +17,23 @@ except Exception as e:
     print(f"❌ Error: {e}")
     coleccion = None
 
+# ==================== CARGAR MODELO ML (OPCIONAL) ====================
+ML_DISPONIBLE = False
+modelo_ml = None
+scaler_ml = None
+
+try:
+    # Verificar que los archivos existen
+    if os.path.exists('modelo_pronostico.pkl') and os.path.exists('scaler.pkl'):
+        modelo_ml = joblib.load('modelo_pronostico.pkl')
+        scaler_ml = joblib.load('scaler.pkl')
+        ML_DISPONIBLE = True
+        print("✅ Modelo ML cargado correctamente")
+    else:
+        print("⚠️ Archivos del modelo ML no encontrados, usando pronóstico tradicional")
+except Exception as e:
+    print(f"⚠️ Error cargando modelo ML: {e}")
+
 # ==================== CARGAR MODELO ML ====================
 # Intentar cargar el modelo ML si existe
 try:
