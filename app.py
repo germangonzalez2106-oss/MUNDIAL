@@ -706,7 +706,7 @@ HTML = """
     }
 }
     
-# ==================== FUNCIONES ====================
+
 
 function analizarPartido() {
     let local = document.getElementById('analisisLocal').value;
