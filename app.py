@@ -210,6 +210,103 @@ def obtener_todos_resultados(continente=None):
 
 # ==================== FUNCIONES ====================
 
+# ==================== OPORTUNIDADES DE VALOR ====================
+
+def calcular_valor_oportunidad(probabilidad_real, cuota):
+    """Calcula el valor de una apuesta (retorno esperado)"""
+    if cuota <= 0:
+        return -100
+    probabilidad_implicita = 1 / cuota
+    valor = (probabilidad_real - probabilidad_implicita) / probabilidad_implicita * 100
+    return round(valor, 1)
+
+def obtener_probabilidad_real_local(equipo_local, equipo_visitante):
+    """Calcula probabilidad real basada en ranking FIFA y localía"""
+    
+    # Ranking FIFA de selecciones (actualizado)
+    rankings = {
+        "Argentina": 1, "Francia": 2, "Brasil": 3, "Inglaterra": 4, "España": 5,
+        "Países Bajos": 6, "Portugal": 7, "Alemania": 8, "Bélgica": 9, "Croacia": 10,
+        "Uruguay": 11, "Colombia": 12, "México": 13, "Estados Unidos": 14, "Marruecos": 15,
+        "Senegal": 16, "Japón": 17, "Corea del Sur": 18, "Australia": 19, "Suiza": 20,
+        "Dinamarca": 21, "Polonia": 22, "Canadá": 23, "Noruega": 24, "Egipto": 25,
+        "Ecuador": 26, "Paraguay": 27, "Costa de Marfil": 28, "Ghana": 29, "Nigeria": 30,
+        "Argelia": 31, "Túnez": 32, "Camerún": 33, "Irán": 34, "Arabia Saudita": 35,
+        "Uzbekistán": 36, "Qatar": 37, "Irak": 38, "Panamá": 39, "Costa Rica": 40,
+        "Jamaica": 41, "Nueva Zelanda": 42, "República Democrática del Congo": 43,
+        "Bolivia": 44, "Austria": 45, "Escocia": 46, "República Checa": 47
+    }
+    
+    if equipo_local not in rankings or equipo_visitante not in rankings:
+        return 0.33
+    
+    r_local = rankings[equipo_local]
+    r_visitante = rankings[equipo_visitante]
+    
+    # Fuerza del equipo (inversamente proporcional al ranking)
+    fuerza_local = (100 - r_local) / 100
+    fuerza_visitante = (100 - r_visitante) / 100
+    
+    # Ventaja de localía (+15%)
+    fuerza_local = fuerza_local * 1.15
+    
+    total_fuerza = fuerza_local + fuerza_visitante
+    probabilidad_local = fuerza_local / total_fuerza
+    
+    return round(probabilidad_local, 3)
+
+def obtener_oportunidades_valor_reales():
+    """Analiza las cuotas reales y devuelve las mejores oportunidades"""
+    
+    # Obtener cuotas reales
+    datos_cuotas = obtener_cuotas()
+    
+    if not datos_cuotas or not datos_cuotas.get('success'):
+        return []
+    
+    oportunidades = []
+    
+    for partido in datos_cuotas.get('games', []):
+        local = partido['home_team']
+        visitante = partido['away_team']
+        cuota_local = partido['cuotas']['home']
+        
+        # Solo analizar equipos que tenemos en nuestro ranking
+        if local in ["Argentina", "Brasil", "Francia", "Inglaterra", "España", 
+                     "Alemania", "Países Bajos", "Portugal", "Bélgica", "Croacia",
+                     "Uruguay", "Colombia", "México", "Estados Unidos", "Marruecos",
+                     "Senegal", "Japón", "Corea del Sur", "Australia", "Suiza",
+                     "Dinamarca", "Polonia", "Canadá", "Noruega", "Egipto",
+                     "Ecuador", "Paraguay", "Costa de Marfil", "Ghana", "Nigeria",
+                     "Argelia", "Túnez", "Camerún", "Irán", "Arabia Saudita",
+                     "Uzbekistán", "Qatar", "Irak", "Panamá", "Costa Rica",
+                     "Jamaica", "Nueva Zelanda", "República Democrática del Congo",
+                     "Bolivia", "Austria", "Escocia", "República Checa"]:
+            
+            prob_real = obtener_probabilidad_real_local(local, visitante)
+            valor = calcular_valor_oportunidad(prob_real, cuota_local)
+            
+            if valor > 5:  # Solo mostrar si hay valor significativo
+                if valor > 15:
+                    nivel = "🔥 MUY RECOMENDADA"
+                elif valor > 8:
+                    nivel = "✅ RECOMENDADA"
+                else:
+                    nivel = "⚠️ VALOR MARGINAL"
+                
+                oportunidades.append({
+                    "apuesta": f"{local} (Local) vs {visitante}",
+                    "valor": valor,
+                    "cuota": cuota_local,
+                    "prob_real": round(prob_real * 100, 1),
+                    "recomendacion": nivel,
+                    "casa": partido['mejores_casas']['home']
+                })
+    
+    # Ordenar por mayor valor
+    oportunidades.sort(key=lambda x: x['valor'], reverse=True)
+    return oportunidades[:6]  # Top 6 oportunidades
+
 
 
 def obtener_selecciones():
@@ -355,6 +452,14 @@ HTML = """
         <button class="btn-orange" onclick="calcularPronostico()">🔮 Calcular</button>
     </div>
     <div id="pronosticoResultado" class="results"></div>
+    <!-- Apuestas con valor -->
+<h2>💰 OPORTUNIDADES DE VALOR</h2>
+<div class="flex" style="margin-bottom: 10px;">
+    <p style="color: #aaa; font-size: 0.9em;">📊 Basado en cuotas reales vs probabilidad estadística</p>
+</div>
+<div id="valorResultado" style="display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 30px;">
+    <p>Cargando oportunidades de valor...</p>
+</div>
     
     <!-- Cuotas -->
     <h2>📊 Cuotas Tiempo Real</h2>
@@ -484,6 +589,40 @@ HTML = """
         }).catch(e=>div.innerHTML='<p>Error</p>');
     }
     
+function cargarOportunidadesValor() {
+    fetch('/api/valor_oportunidades')
+        .then(r => r.json())
+        .then(data => {
+            let container = document.getElementById('valorResultado');
+            if (data.length === 0) {
+                container.innerHTML = '<p>No hay oportunidades de valor significativas en este momento</p>';
+                return;
+            }
+            
+            let html = '';
+            for (let opp of data) {
+                let color = opp.valor > 15 ? '#1a4a2e' : (opp.valor > 8 ? '#2a4a3e' : '#3a4a4e');
+                html += `
+                    <div style="background: ${color}; border-radius: 15px; padding: 15px; flex: 1; min-width: 200px; border-left: 4px solid #FFC107;">
+                        <h3 style="color: #FFC107; margin-bottom: 10px;">🎯 ${opp.apuesta}</h3>
+                        <p style="font-size: 2em; font-weight: bold; color: #4CAF50; margin: 10px 0;">
+                            +${opp.valor}% <span style="font-size: 0.5em; color: #aaa;">valor</span>
+                        </p>
+                        <p>📊 Cuota: <strong>${opp.cuota}</strong> (${opp.casa})</p>
+                        <p>📈 Probabilidad real: ${opp.prob_real}%</p>
+                        <p style="margin-top: 10px; color: #FFC107;">${opp.recomendacion}</p>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('valorResultado').innerHTML = '<p>Error cargando oportunidades de valor</p>';
+        });
+}
+
+
     function cargarHistorial() {
         let local = document.getElementById('histLocal').value;
         let visitante = document.getElementById('histVisit').value;
@@ -513,6 +652,7 @@ HTML = """
     
     cargarGraficos();
     setTimeout(cargarCuotas, 500);
+    cargarOportunidadesValor();
 </script>
 </body>
 </html>
@@ -1152,6 +1292,12 @@ def top_jugadores():
         </body>
         </html>
         """, 500
+
+@app.route('/api/valor_oportunidades')
+def api_valor_oportunidades():
+    """Devuelve las mejores oportunidades de valor con cuotas reales"""
+    oportunidades = obtener_oportunidades_valor_reales()
+    return jsonify(oportunidades)
 
 
 @app.route('/estadisticas_jugador/<nombre>')
