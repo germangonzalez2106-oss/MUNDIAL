@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import requests
 import traceback
@@ -17,6 +18,30 @@ try:
 except Exception as e:
     print(f"❌ Error: {e}")
     coleccion = None
+
+
+
+# ==================== ESTADÍSTICAS PROMEDIO POR LIGA ====================
+# Datos basados en promedios reales de las principales ligas (temporada 2024-2025)
+ESTADISTICAS_POR_LIGA = {
+    "Premier League": {"goles": 2.82, "corners": 10.5, "tiros": 23.2, "tiros_puerta": 8.4, "amarillas": 3.8},
+    "La Liga": {"goles": 2.58, "corners": 9.8, "tiros": 21.5, "tiros_puerta": 7.8, "amarillas": 4.2},
+    "Serie A": {"goles": 2.68, "corners": 9.5, "tiros": 20.8, "tiros_puerta": 7.5, "amarillas": 4.0},
+    "Bundesliga": {"goles": 3.02, "corners": 10.8, "tiros": 24.5, "tiros_puerta": 8.8, "amarillas": 3.5},
+    "Ligue 1": {"goles": 2.52, "corners": 9.2, "tiros": 19.8, "tiros_puerta": 7.2, "amarillas": 3.9},
+    "MLS": {"goles": 2.95, "corners": 9.0, "tiros": 21.0, "tiros_puerta": 7.5, "amarillas": 3.2},
+    "default": {"goles": 2.65, "corners": 9.8, "tiros": 21.5, "tiros_puerta": 7.8, "amarillas": 3.8}
+}
+
+# Ranking FIFA de selecciones
+RANKING_FIFA = {
+    "Argentina": 1, "Francia": 2, "Brasil": 3, "Inglaterra": 4, "España": 5,
+    "Países Bajos": 6, "Portugal": 7, "Alemania": 8, "Bélgica": 9, "Croacia": 10,
+    "Uruguay": 11, "Colombia": 12, "México": 13, "Estados Unidos": 14, "Marruecos": 15,
+    "Senegal": 16, "Japón": 17, "Corea del Sur": 18, "Australia": 19, "Suiza": 20,
+    "Dinamarca": 21, "Polonia": 22, "Canadá": 23, "Noruega": 24, "Egipto": 25,
+}
+
 
 # ==================== JUGADORES MANUALES ====================
 JUGADORES_MANUALES = {
@@ -211,6 +236,112 @@ def obtener_todos_resultados(continente=None):
     return PARTIDOS_ELIMINATORIAS
 
 # ==================== FUNCIONES ====================
+
+def calcular_fuerza_equipo(nombre_equipo):
+    """Calcula la fuerza del equipo basada en ranking FIFA (1 es mejor)"""
+    ranking = RANKING_FIFA.get(nombre_equipo, 15)
+    # Convertir ranking a fuerza (0-1)
+    fuerza = max(0.3, min(0.9, (100 - ranking) / 100))
+    return fuerza
+
+def predecir_estadisticas_partido(equipo_local, equipo_visitante, liga="default"):
+    """Predice estadísticas del partido basado en fuerza de equipos y promedios de liga"""
+    
+    stats_liga = ESTADISTICAS_POR_LIGA.get(liga, ESTADISTICAS_POR_LIGA["default"])
+    
+    # Fuerza de cada equipo
+    fuerza_local = calcular_fuerza_equipo(equipo_local)
+    fuerza_visitante = calcular_fuerza_equipo(equipo_visitante)
+    
+    # Factor de localía (+15% al local)
+    factor_local = (fuerza_local * 1.15) / ((fuerza_local * 1.15) + fuerza_visitante)
+    factor_visitante = 1 - factor_local
+    
+    # Calcular estadísticas esperadas
+    goles_esperados_local = round(stats_liga["goles"] * factor_local, 1)
+    goles_esperados_visitante = round(stats_liga["goles"] * factor_visitante, 1)
+    goles_totales = round(goles_esperados_local + goles_esperados_visitante, 1)
+    
+    corners_local = round(stats_liga["corners"] * factor_local, 1)
+    corners_visitante = round(stats_liga["corners"] * factor_visitante, 1)
+    corners_totales = round(corners_local + corners_visitante, 1)
+    
+    tiros_local = round(stats_liga["tiros"] * factor_local, 1)
+    tiros_visitante = round(stats_liga["tiros"] * factor_visitante, 1)
+    tiros_totales = round(tiros_local + tiros_visitante, 1)
+    
+    tiros_puerta_local = round(stats_liga["tiros_puerta"] * factor_local, 1)
+    tiros_puerta_visitante = round(stats_liga["tiros_puerta"] * factor_visitante, 1)
+    
+    return {
+        "goles": {
+            "local": goles_esperados_local,
+            "visitante": goles_esperados_visitante,
+            "total": goles_totales
+        },
+        "corners": {
+            "local": corners_local,
+            "visitante": corners_visitante,
+            "total": corners_totales
+        },
+        "tiros": {
+            "local": tiros_local,
+            "visitante": tiros_visitante,
+            "total": tiros_totales
+        },
+        "tiros_puerta": {
+            "local": tiros_puerta_local,
+            "visitante": tiros_puerta_visitante
+        }
+    }
+
+def generar_recomendaciones(estadisticas):
+    """Genera recomendaciones de apuesta basadas en estadísticas esperadas"""
+    recomendaciones = []
+    
+    # Recomendación de goles
+    if estadisticas["goles"]["total"] > 2.5:
+        recomendaciones.append({
+            "mercado": "⚽ GOLES",
+            "apuesta": "Más de 2.5 goles",
+            "probabilidad": min(85, 55 + (estadisticas["goles"]["total"] - 2.5) * 15),
+            "estadistica": f"{estadisticas['goles']['total']} goles esperados"
+        })
+    else:
+        recomendaciones.append({
+            "mercado": "⚽ GOLES",
+            "apuesta": "Menos de 2.5 goles",
+            "probabilidad": min(85, 55 + (2.5 - estadisticas["goles"]["total"]) * 15),
+            "estadistica": f"{estadisticas['goles']['total']} goles esperados"
+        })
+    
+    # Recomendación de córners
+    if estadisticas["corners"]["total"] > 9.5:
+        recomendaciones.append({
+            "mercado": "🔄 CÓRNERS",
+            "apuesta": "Más de 9.5 córners",
+            "probabilidad": min(80, 50 + (estadisticas["corners"]["total"] - 9.5) * 12),
+            "estadistica": f"{estadisticas['corners']['total']} córners esperados"
+        })
+    else:
+        recomendaciones.append({
+            "mercado": "🔄 CÓRNERS",
+            "apuesta": "Menos de 9.5 córners",
+            "probabilidad": min(80, 50 + (9.5 - estadisticas["corners"]["total"]) * 12),
+            "estadistica": f"{estadisticas['corners']['total']} córners esperados"
+        })
+    
+    # Recomendación de tiros totales
+    if estadisticas["tiros"]["total"] > 22:
+        recomendaciones.append({
+            "mercado": "🎯 TIROS",
+            "apuesta": "Más de 22 tiros totales",
+            "probabilidad": min(75, 50 + (estadisticas["tiros"]["total"] - 22) * 8),
+            "estadistica": f"{estadisticas['tiros']['total']} tiros esperados"
+        })
+    
+    return recomendaciones
+
 
 # ==================== OPORTUNIDADES DE VALOR ====================
 
@@ -467,6 +598,29 @@ HTML = """
     <h2>📊 Cuotas Tiempo Real</h2>
     <button class="btn-blue" onclick="cargarCuotas()">🔄 Actualizar</button>
     <div id="cuotasResultado" style="margin-top:15px;"></div>
+
+    <!-- Análisis Avanzado por Partido -->
+<h2>🔍 ANÁLISIS AVANZADO POR PARTIDO</h2>
+<p style="color: #aaa; margin-bottom: 10px;">Predicciones de goles, córners, tiros y recomendaciones de apuesta</p>
+
+<div class="flex">
+    <select id="analisisLocal">
+        <option value="">Selecciona equipo local</option>
+        {% for s in selecciones %}
+        <option value="{{ s.nombre }}">{{ s.nombre }}</option>
+        {% endfor %}
+    </select>
+    <span>VS</span>
+    <select id="analisisVisitante">
+        <option value="">Selecciona equipo visitante</option>
+        {% for s in selecciones %}
+        <option value="{{ s.nombre }}">{{ s.nombre }}</option>
+        {% endfor %}
+    </select>
+    <button class="btn-orange" onclick="analizarPartido()">🔮 Analizar Partido</button>
+</div>
+
+<div id="analisisResultado" class="results" style="display: none;"></div>
     
     <!-- Historial -->
     <h2>📜 Historial de Enfrentamientos</h2>
@@ -552,6 +706,102 @@ HTML = """
     }
 }
     
+# ==================== FUNCIONES ====================
+
+function analizarPartido() {
+    let local = document.getElementById('analisisLocal').value;
+    let visitante = document.getElementById('analisisVisitante').value;
+    
+    if (!local || !visitante) {
+        alert("Selecciona ambos equipos");
+        return;
+    }
+    
+    if (local === visitante) {
+        alert("Los equipos deben ser diferentes");
+        return;
+    }
+    
+    let div = document.getElementById('analisisResultado');
+    div.innerHTML = '<p style="text-align:center">📊 Analizando estadísticas y generando recomendaciones...</p>';
+    div.style.display = 'block';
+    
+    fetch(`/api/analisis_partido/${encodeURIComponent(local)}/${encodeURIComponent(visitante)}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                div.innerHTML = `<p style="color: red;">❌ ${data.error}</p>`;
+                return;
+            }
+            
+            let html = `
+                <div style="background: #0f3460; border-radius: 15px; padding: 20px;">
+                    <h3 style="text-align: center; color: #4CAF50;">📊 ${data.local} vs ${data.visitante}</h3>
+                    <p style="text-align: center; color: #aaa;">Análisis basado en ranking FIFA y estadísticas de liga</p>
+                    
+                    <h4>📈 ESTADÍSTICAS ESPERADAS</h4>
+                    <div class="grid-3">
+                        <div class="stat-card">
+                            <div class="big-number">${data.estadisticas.goles.total}</div>
+                            <p>⚽ GOLES TOTALES</p>
+                            <small>${data.estadisticas.goles.local} - ${data.estadisticas.goles.visitante}</small>
+                        </div>
+                        <div class="stat-card">
+                            <div class="big-number">${data.estadisticas.corners.total}</div>
+                            <p>🔄 CÓRNERS TOTALES</p>
+                            <small>${data.estadisticas.corners.local} - ${data.estadisticas.corners.visitante}</small>
+                        </div>
+                        <div class="stat-card">
+                            <div class="big-number">${data.estadisticas.tiros.total}</div>
+                            <p>🎯 TIROS TOTALES</p>
+                            <small>${data.estadisticas.tiros.local} - ${data.estadisticas.tiros.visitante}</small>
+                        </div>
+                    </div>
+                    
+                    <h4>🎯 RECOMENDACIONES DE APUESTA</h4>
+                    <div style="display: flex; flex-direction: column; gap: 15px;">
+            `;
+            
+            for (let rec of data.recomendaciones) {
+                let color = rec.probabilidad > 65 ? '#1a4a2e' : '#2a4a3e';
+                html += `
+                    <div style="background: ${color}; border-radius: 12px; padding: 15px; border-left: 4px solid #FFC107;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                            <div>
+                                <strong style="font-size: 1.2em;">${rec.mercado}</strong>
+                                <p style="margin: 5px 0;">${rec.apuesta}</p>
+                                <small>📊 ${rec.estadistica}</small>
+                            </div>
+                            <div style="text-align: center;">
+                                <div class="big-number" style="font-size: 1.8em;">${rec.probabilidad}%</div>
+                                <small>Probabilidad</small>
+                            </div>
+                            <div style="text-align: center;">
+                                <div class="big-number" style="font-size: 1.8em;">${rec.cuota_sugerida}</div>
+                                <small>Cuota sugerida</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += `
+                    </div>
+                    <p style="text-align: center; color: #aaa; margin-top: 20px; font-size: 12px;">
+                        📅 Análisis generado: ${data.timestamp}<br>
+                        ⚠️ Las apuestas tienen riesgo. Esta herramienta es solo para análisis estadístico.
+                    </p>
+                </div>
+            `;
+            
+            div.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            div.innerHTML = '<p style="color: red;">❌ Error al analizar el partido. Intenta de nuevo.</p>';
+        });
+}
+
     function calcularPronostico() {
         let local = document.getElementById('eqLocal').value;
         let visitante = document.getElementById('eqVisitante').value;
@@ -1332,6 +1582,32 @@ def top_jugadores():
         </html>
         """, 500
 
+@app.route('/api/analisis_partido/<local>/<visitante>')
+def api_analisis_partido(local, visitante):
+    """Análisis completo de un partido"""
+    try:
+        # Predecir estadísticas
+        estadisticas = predecir_estadisticas_partido(local, visitante)
+        
+        # Generar recomendaciones
+        recomendaciones = generar_recomendaciones(estadisticas)
+        
+        # Calcular cuota justa sugerida
+        cuotas_sugeridas = []
+        for rec in recomendaciones:
+            cuota_justa = round(100 / rec["probabilidad"], 2)
+            rec["cuota_justa"] = cuota_justa
+            rec["cuota_sugerida"] = round(cuota_justa * 0.95, 2)  # 5% margen
+        
+        return jsonify({
+            "local": local,
+            "visitante": visitante,
+            "estadisticas": estadisticas,
+            "recomendaciones": recomendaciones,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/estadisticas_jugador/<nombre>')
