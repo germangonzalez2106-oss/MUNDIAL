@@ -19,6 +19,80 @@ try:
 except Exception as e:
     print(f"❌ Error: {e}")
     coleccion = None
+
+    # En app.py, agregar esta función:
+
+def obtener_jugadores_clave_partido(seleccion):
+    """Obtiene los mejores jugadores de una selección para recomendaciones"""
+    jugadores = list(db.estadisticas_jugadores_bzzoiro.find(
+        {"seleccion": seleccion, "participa_mundial": True},
+        {'_id': 0, 'nombre': 1, 'goles_por_partido': 1, 'tiros_por_partido': 1, 
+         'rating_promedio': 1, 'partidos': 1, 'goles': 1, 'tiros_totales': 1}
+    ).sort('goles_por_partido', -1).limit(5))
+    return jugadores
+
+def generar_recomendaciones_partido(local, visitante):
+    """Genera recomendaciones de apuesta para los jugadores clave del partido"""
+    jugadores_local = obtener_jugadores_clave_partido(local)
+    jugadores_visitante = obtener_jugadores_clave_partido(visitante)
+    
+    recomendaciones = []
+    
+    # Recomendaciones de jugadores del equipo local
+    for j in jugadores_local:
+        prob_gol = min(85, j.get('goles_por_partido', 0) * 45)
+        if prob_gol > 25:
+            recomendaciones.append({
+                "tipo": "⚽ GOL",
+                "jugador": j['nombre'],
+                "equipo": local,
+                "apuesta": f"{j['nombre']} anotará un gol",
+                "probabilidad": round(prob_gol, 1),
+                "cuota_sugerida": round(100 / prob_gol, 2),
+                "estadistica": f"{j.get('goles', 0)} goles en {j.get('partidos', 0)} partidos"
+            })
+        
+        prob_tiros = min(75, 30 + j.get('tiros_por_partido', 0) * 10)
+        if prob_tiros > 40:
+            recomendaciones.append({
+                "tipo": "🎯 TIROS",
+                "jugador": j['nombre'],
+                "equipo": local,
+                "apuesta": f"{j['nombre']} - Más de 1.5 tiros",
+                "probabilidad": round(prob_tiros, 1),
+                "cuota_sugerida": round(100 / prob_tiros, 2),
+                "estadistica": f"{j.get('tiros_totales', 0)} tiros en {j.get('partidos', 0)} partidos"
+            })
+    
+    # Recomendaciones de jugadores del equipo visitante
+    for j in jugadores_visitante:
+        prob_gol = min(85, j.get('goles_por_partido', 0) * 45)
+        if prob_gol > 25:
+            recomendaciones.append({
+                "tipo": "⚽ GOL",
+                "jugador": j['nombre'],
+                "equipo": visitante,
+                "apuesta": f"{j['nombre']} anotará un gol",
+                "probabilidad": round(prob_gol, 1),
+                "cuota_sugerida": round(100 / prob_gol, 2),
+                "estadistica": f"{j.get('goles', 0)} goles en {j.get('partidos', 0)} partidos"
+            })
+        
+        prob_tiros = min(75, 30 + j.get('tiros_por_partido', 0) * 10)
+        if prob_tiros > 40:
+            recomendaciones.append({
+                "tipo": "🎯 TIROS",
+                "jugador": j['nombre'],
+                "equipo": visitante,
+                "apuesta": f"{j['nombre']} - Más de 1.5 tiros",
+                "probabilidad": round(prob_tiros, 1),
+                "cuota_sugerida": round(100 / prob_tiros, 2),
+                "estadistica": f"{j.get('tiros_totales', 0)} tiros en {j.get('partidos', 0)} partidos"
+            })
+    
+    # Ordenar por probabilidad
+    recomendaciones.sort(key=lambda x: x['probabilidad'], reverse=True)
+    return recomendaciones[:10]  # Top 10
     
 # ==================== CARGAR DATOS DESDE MONGODB ====================
 
@@ -1776,26 +1850,30 @@ def top_jugadores():
 
 @app.route('/api/analisis_partido/<local>/<visitante>')
 def api_analisis_partido(local, visitante):
-    """Análisis completo de un partido"""
+    """Análisis completo del partido con recomendaciones de jugadores"""
     try:
-        # Predecir estadísticas
+        # Estadísticas del partido
         estadisticas = predecir_estadisticas_partido(local, visitante)
         
-        # Generar recomendaciones
-        recomendaciones = generar_recomendaciones(estadisticas)
+        # Recomendaciones de mercado general (goles, corners, etc.)
+        recomendaciones_generales = generar_recomendaciones(estadisticas)
         
-        # Calcular cuota justa sugerida
-        cuotas_sugeridas = []
-        for rec in recomendaciones:
-            cuota_justa = round(100 / rec["probabilidad"], 2)
-            rec["cuota_justa"] = cuota_justa
-            rec["cuota_sugerida"] = round(cuota_justa * 0.95, 2)  # 5% margen
+        # Recomendaciones de jugadores clave
+        recomendaciones_jugadores = generar_recomendaciones_partido(local, visitante)
+        
+        # Combinar ambas
+        todas_recomendaciones = recomendaciones_generales + recomendaciones_jugadores
+        
+        for rec in todas_recomendaciones:
+            if 'cuota_sugerida' not in rec:
+                cuota_justa = round(100 / rec.get("probabilidad", 50), 2)
+                rec["cuota_sugerida"] = round(cuota_justa * 0.95, 2)
         
         return jsonify({
             "local": local,
             "visitante": visitante,
             "estadisticas": estadisticas,
-            "recomendaciones": recomendaciones,
+            "recomendaciones": todas_recomendaciones,
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
     except Exception as e:
