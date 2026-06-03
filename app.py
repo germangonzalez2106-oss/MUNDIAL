@@ -1832,9 +1832,9 @@ def api_top_jugadores_estadisticas():
     """API con top jugadores por goles"""
     try:
         jugadores = list(db.estadisticas_jugadores_bzzoiro.find(
-            {}, 
+            {"participa_mundial": {"$eq": True}}, 
             {'_id': 0, 'nombre': 1, 'goles': 1, 'goles_por_partido': 1, 
-             'tiros_por_partido': 1, 'rating_promedio': 1, 'partidos': 1}
+             'tiros_por_partido': 1, 'rating_promedio': 1, 'partidos': 1'seleccion': 1}
         ).sort('goles', -1).limit(20))
         return jsonify(jugadores)
     except Exception as e:
@@ -1842,12 +1842,13 @@ def api_top_jugadores_estadisticas():
 
 @app.route('/api/recomendaciones_jugador/<nombre>')
 def api_recomendaciones_jugador(nombre):
-    """Recomendaciones de apuesta para un jugador"""
+    """Recomendaciones de apuesta para un jugador del Mundial"""
     try:
-        jugador = db.estadisticas_jugadores_bzzoiro.find_one({"nombre": nombre})
+        jugador = db.estadisticas_jugadores_bzzoiro.find_one( {"nombre": nombre, "participa_mundial": {"$eq": True}}
+        )
         
         if not jugador:
-            return jsonify({"error": "Jugador no encontrado"}), 404
+            return jsonify({"error": "Jugador no encontrado o no participa en el Mundial"}), 404
         
         recomendaciones = []
         
