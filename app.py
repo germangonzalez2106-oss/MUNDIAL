@@ -27,8 +27,24 @@ def obtener_jugadores_clave_partido(seleccion):
     jugadores = list(db.estadisticas_jugadores_bzzoiro.find(
         {"seleccion": seleccion, "participa_mundial": True},
         {'_id': 0, 'nombre': 1, 'goles_por_partido': 1, 'tiros_por_partido': 1, 
-         'rating_promedio': 1, 'partidos': 1, 'goles': 1, 'tiros_totales': 1}
+         'rating_promedio': 1, 'partidos': 1, 'goles': 1, 'tiros_totales': 1, 'asistencias': 1}
     ).sort('goles_por_partido', -1).limit(5))
+    
+    # Asegurar que los valores no sean None
+    for j in jugadores:
+        if j.get('tiros_por_partido') is None:
+            j['tiros_por_partido'] = 0
+        if j.get('goles_por_partido') is None:
+            j['goles_por_partido'] = 0
+        if j.get('rating_promedio') is None:
+            j['rating_promedio'] = 0
+        if j.get('tiros_totales') is None:
+            j['tiros_totales'] = 0
+        if j.get('partidos') is None:
+            j['partidos'] = 0
+        if j.get('goles') is None:
+            j['goles'] = 0
+    
     return jugadores
 
 def generar_recomendaciones_partido(local, visitante):
@@ -38,9 +54,17 @@ def generar_recomendaciones_partido(local, visitante):
     
     recomendaciones = []
     
-    # Recomendaciones de jugadores del equipo local
     for j in jugadores_local:
-        prob_gol = min(85, j.get('goles_por_partido', 0) * 45)
+        # Asegurar valores numéricos
+        goles_partido = j.get('goles_por_partido', 0)
+        if goles_partido is None:
+            goles_partido = 0
+        tiros_partido = j.get('tiros_por_partido', 0)
+        if tiros_partido is None:
+            tiros_partido = 0
+        
+        # Recomendación de gol
+        prob_gol = min(85, goles_partido * 45)
         if prob_gol > 25:
             recomendaciones.append({
                 "tipo": "⚽ GOL",
@@ -52,8 +76,9 @@ def generar_recomendaciones_partido(local, visitante):
                 "estadistica": f"{j.get('goles', 0)} goles en {j.get('partidos', 0)} partidos"
             })
         
-        prob_tiros = min(75, 30 + j.get('tiros_por_partido', 0) * 10)
-        if prob_tiros > 40:
+        # Recomendación de tiros
+        prob_tiros = min(75, 30 + tiros_partido * 10)
+        if prob_tiros > 40 and tiros_partido > 0:
             recomendaciones.append({
                 "tipo": "🎯 TIROS",
                 "jugador": j['nombre'],
@@ -64,9 +89,17 @@ def generar_recomendaciones_partido(local, visitante):
                 "estadistica": f"{j.get('tiros_totales', 0)} tiros en {j.get('partidos', 0)} partidos"
             })
     
-    # Recomendaciones de jugadores del equipo visitante
     for j in jugadores_visitante:
-        prob_gol = min(85, j.get('goles_por_partido', 0) * 45)
+        # Asegurar valores numéricos
+        goles_partido = j.get('goles_por_partido', 0)
+        if goles_partido is None:
+            goles_partido = 0
+        tiros_partido = j.get('tiros_por_partido', 0)
+        if tiros_partido is None:
+            tiros_partido = 0
+        
+        # Recomendación de gol
+        prob_gol = min(85, goles_partido * 45)
         if prob_gol > 25:
             recomendaciones.append({
                 "tipo": "⚽ GOL",
@@ -78,8 +111,9 @@ def generar_recomendaciones_partido(local, visitante):
                 "estadistica": f"{j.get('goles', 0)} goles en {j.get('partidos', 0)} partidos"
             })
         
-        prob_tiros = min(75, 30 + j.get('tiros_por_partido', 0) * 10)
-        if prob_tiros > 40:
+        # Recomendación de tiros
+        prob_tiros = min(75, 30 + tiros_partido * 10)
+        if prob_tiros > 40 and tiros_partido > 0:
             recomendaciones.append({
                 "tipo": "🎯 TIROS",
                 "jugador": j['nombre'],
@@ -92,7 +126,7 @@ def generar_recomendaciones_partido(local, visitante):
     
     # Ordenar por probabilidad
     recomendaciones.sort(key=lambda x: x['probabilidad'], reverse=True)
-    return recomendaciones[:10]  # Top 10
+    return recomendaciones[:10]
     
 # ==================== CARGAR DATOS DESDE MONGODB ====================
 
