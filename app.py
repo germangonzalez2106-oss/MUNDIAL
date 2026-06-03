@@ -913,13 +913,15 @@ function analizarPartido() {
             
             for (let rec of data.recomendaciones) {
                 let color = rec.probabilidad > 65 ? '#1a4a2e' : '#2a4a3e';
+                // Usar 'tipo' para recomendaciones de jugadores, 'mercado' para las generales
+                let titulo = rec.tipo || rec.mercado;
                 html += `
                     <div style="background: ${color}; border-radius: 12px; padding: 15px; border-left: 4px solid #FFC107;">
                         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
                             <div>
-                                <strong style="font-size: 1.2em;">${rec.mercado}</strong>
+                                <strong style="font-size: 1.2em;">${titulo}</strong>
                                 <p style="margin: 5px 0;">${rec.apuesta}</p>
-                                <small>📊 ${rec.estadistica}</small>
+                                <small>📊 ${rec.estadistica || ''}</small>
                             </div>
                             <div style="text-align: center;">
                                 <div class="big-number" style="font-size: 1.8em;">${rec.probabilidad}%</div>
