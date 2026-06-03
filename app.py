@@ -599,6 +599,7 @@ HTML = """
         <a href="/eliminatorias">🌍 Eliminatorias</a>
         <a href="/resultados">📋 Resultados</a>
         <a href="/top_jugadores">⭐ Top Jugadores</a>
+        <a href="/recomendaciones_jugadores">🎯 Recomendaciones</a>  <!-- NUEVO -->
     </div>
     
     <h1>🏆 Mundial 2026</h1>
@@ -978,7 +979,7 @@ HTML_ELIMINATORIAS = """
 </head>
 <body>
 <div class="container">
-    <div class="nav"><a href="/">🏆 Ranking</a><a href="/jugador">🔍 Jugadores</a><a href="/eliminatorias">🌍 Eliminatorias</a><a href="/resultados">📋 Resultados</a></div>
+    <div class="nav"><a href="/">🏆 Ranking</a><a href="/jugador">🔍 Jugadores</a><a href="/eliminatorias">🌍 Eliminatorias</a><a href="/resultados">📋 Resultados</a><a href="/recomendaciones_jugadores">🎯 Recomendaciones</a><a href="/recomendaciones_jugadores">🎯 Recomendaciones</a>  <!-- NUEVO --></div>
     <h1>🌍 Eliminatorias por Continente</h1>
     
     <div class="continente">
@@ -1064,7 +1065,7 @@ HTML_JUGADOR = """
 </head>
 <body>
 <div class="container">
-    <div class="nav"><a href="/">🏆 Ranking</a><a href="/jugador">🔍 Jugadores</a><a href="/eliminatorias">🌍 Eliminatorias</a><a href="/resultados">📋 Resultados</a></div>
+    <div class="nav"><a href="/">🏆 Ranking</a><a href="/jugador">🔍 Jugadores</a><a href="/eliminatorias">🌍 Eliminatorias</a><a href="/resultados">📋 Resultados</a><a href="/recomendaciones_jugadores">🎯 Recomendaciones</a>  <!-- NUEVO --></div>
     <h1>🔍 Buscador de Jugadores</h1>
     <div class="flex"><input type="text" id="searchInput" placeholder="Ej: Messi, Ronaldo..."><button onclick="buscar()">Buscar</button></div>
     <div id="resultado" class="results"></div>
@@ -1127,6 +1128,7 @@ HTML_RESULTADOS = """
         <a href="/eliminatorias">🌍 Eliminatorias</a>
         <a href="/resultados">📋 Resultados</a>
         <a href="/top_jugadores">⭐ Top Jugadores</a>
+        <a href="/recomendaciones_jugadores">🎯 Recomendaciones</a>  <!-- NUEVO -->
     </div>
     <h1>📋 Resultados de Eliminatorias</h1>
     
@@ -1251,6 +1253,7 @@ HTML_ESTADISTICAS_JUGADOR = """
         <a href="/eliminatorias">🌍 Eliminatorias</a>
         <a href="/resultados">📋 Resultados</a>
         <a href="/top_jugadores">⭐ Top Jugadores</a>
+        <a href="/recomendaciones_jugadores">🎯 Recomendaciones</a>  <!-- NUEVO -->
     </div>
     
     <div class="card">
@@ -1337,6 +1340,154 @@ HTML_ESTADISTICAS_JUGADOR = """
 </html>
 """
 
+# ==================== NUEVO HTML PARA RECOMENDACIONES DE JUGADORES ====================
+
+HTML_RECOMENDACIONES_JUGADOR = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Recomendaciones por Jugador - Mundial 2026</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { text-align: center; color: #4CAF50; margin-bottom: 10px; }
+        .nav { text-align: center; margin-bottom: 20px; }
+        .nav a { color: #4CAF50; text-decoration: none; margin: 0 10px; padding: 8px 20px; background: #0f3460; border-radius: 25px; display: inline-block; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px; }
+        .card { background: #0f3460; border-radius: 15px; padding: 20px; transition: transform 0.2s; }
+        .card:hover { transform: scale(1.02); }
+        .nombre { font-size: 1.5em; color: #FFC107; margin-bottom: 5px; }
+        .goles { font-size: 2em; color: #4CAF50; }
+        .btn { background: #2196F3; color: white; padding: 8px 16px; border-radius: 20px; text-decoration: none; display: inline-block; margin-top: 10px; border: none; cursor: pointer; }
+        select, button { padding: 10px 20px; border-radius: 25px; border: none; background: #0f3460; color: white; cursor: pointer; }
+        button { background: #4CAF50; }
+        .flex { display: flex; gap: 10px; justify-content: center; margin: 20px 0; flex-wrap: wrap; }
+        .results { background: #0f3460; border-radius: 15px; padding: 20px; margin-top: 20px; display: none; }
+        .small-card { background: #1a1a2e; border-radius: 10px; padding: 15px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="nav">
+        <a href="/">🏆 Ranking</a>
+        <a href="/jugador">🔍 Jugadores</a>
+        <a href="/eliminatorias">🌍 Eliminatorias</a>
+        <a href="/resultados">📋 Resultados</a>
+        <a href="/top_jugadores">⭐ Top Jugadores</a>
+        <a href="/recomendaciones_jugadores">🎯 Recomendaciones</a>
+    </div>
+    
+    <h1>🎯 Recomendaciones de Apuesta por Jugador</h1>
+    <p style="text-align:center">Basado en estadísticas reales de los últimos partidos</p>
+    
+    <div class="flex">
+        <select id="jugadorSelect">
+            <option value="">Selecciona un jugador</option>
+        </select>
+        <button onclick="cargarRecomendaciones()">🔮 Obtener Recomendaciones</button>
+    </div>
+    
+    <div id="resultado" class="results"></div>
+    
+    <h2>🏆 Top Goleadores</h2>
+    <div id="topJugadores" class="grid"></div>
+</div>
+
+<script>
+    // Cargar top jugadores
+    fetch('/api/top_jugadores_estadisticas')
+        .then(r => r.json())
+        .then(data => {
+            let html = '';
+            for (let j of data.slice(0, 8)) {
+                html += `
+                    <div class="card">
+                        <div class="nombre">⭐ ${j.nombre}</div>
+                        <div class="goles">${j.goles} goles</div>
+                        <div>${j.goles_por_partido ? j.goles_por_partido.toFixed(2) : '0'} por partido</div>
+                        <div>🎯 ${j.tiros_por_partido || 0} tiros/partido</div>
+                        <div>📊 Rating: ${j.rating_promedio || 0}</div>
+                        <button onclick="seleccionarJugador('${j.nombre.replace(/'/g, "\\'")}')" class="btn">Ver recomendaciones</button>
+                    </div>
+                `;
+            }
+            document.getElementById('topJugadores').innerHTML = html;
+            
+            // Llenar select
+            let select = document.getElementById('jugadorSelect');
+            for (let j of data) {
+                let option = document.createElement('option');
+                option.value = j.nombre;
+                option.textContent = j.nombre;
+                select.appendChild(option);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    
+    function seleccionarJugador(nombre) {
+        document.getElementById('jugadorSelect').value = nombre;
+        cargarRecomendaciones();
+    }
+    
+    function cargarRecomendaciones() {
+        let nombre = document.getElementById('jugadorSelect').value;
+        if (!nombre) { alert("Selecciona un jugador"); return; }
+        
+        let div = document.getElementById('resultado');
+        div.innerHTML = '<p>Cargando...</p>';
+        div.style.display = 'block';
+        
+        fetch('/api/recomendaciones_jugador/' + encodeURIComponent(nombre))
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    div.innerHTML = `<p>❌ ${data.error}</p>`;
+                    return;
+                }
+                
+                let html = `
+                    <h2>⚽ ${data.jugador}</h2>
+                    <div class="grid">
+                        <div class="card"><div class="goles">${data.estadisticas.partidos}</div><div>Partidos</div></div>
+                        <div class="card"><div class="goles">${data.estadisticas.goles_por_partido.toFixed(2)}</div><div>Goles/partido</div></div>
+                        <div class="card"><div class="goles">${data.estadisticas.tiros_por_partido}</div><div>Tiros/partido</div></div>
+                        <div class="card"><div class="goles">${data.estadisticas.rating_promedio}</div><div>Rating promedio</div></div>
+                    </div>
+                    <h3>🎯 Recomendaciones de apuesta</h3>
+                `;
+                
+                for (let rec of data.recomendaciones) {
+                    html += `
+                        <div class="small-card">
+                            <h3 style="color: #FFC107;">${rec.mercado}</h3>
+                            <p>🎯 ${rec.apuesta}</p>
+                            <p>📈 Probabilidad: ${rec.probabilidad}%</p>
+                            <p>💰 Cuota sugerida: ${rec.cuota_sugerida}</p>
+                            <p><small>📊 ${rec.estadistica}</small></p>
+                        </div>
+                    `;
+                }
+                
+                div.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                div.innerHTML = '<p>❌ Error al cargar recomendaciones</p>';
+            });
+    }
+</script>
+</body>
+</html>
+"""
+
 # ==================== PÁGINA TOP JUGADORES ====================
 HTML_TOP_JUGADORES = """
 <!DOCTYPE html>
@@ -1376,6 +1527,7 @@ HTML_TOP_JUGADORES = """
         <a href="/eliminatorias">🌍 Eliminatorias</a>
         <a href="/resultados">📋 Resultados</a>
         <a href="/top_jugadores">⭐ Top Jugadores</a>
+        <a href="/recomendaciones_jugadores">🎯 Recomendaciones</a>  <!-- NUEVO -->
     </div>
     
     <h1>⭐ Top Jugadores</h1>
@@ -1667,6 +1819,73 @@ def estadisticas_jugador(nombre):
         """
     
     return render_template_string(HTML_ESTADISTICAS_JUGADOR, jugador=jugador)
+
+# ==================== NUEVAS FUNCIONES PARA RECOMENDACIONES DE JUGADORES ====================
+
+@app.route('/recomendaciones_jugadores')
+def recomendaciones_jugadores():
+    """Página de recomendaciones por jugador"""
+    return render_template_string(HTML_RECOMENDACIONES_JUGADOR)
+
+@app.route('/api/top_jugadores_estadisticas')
+def api_top_jugadores_estadisticas():
+    """API con top jugadores por goles"""
+    try:
+        jugadores = list(db.estadisticas_jugadores_bzzoiro.find(
+            {}, 
+            {'_id': 0, 'nombre': 1, 'goles': 1, 'goles_por_partido': 1, 
+             'tiros_por_partido': 1, 'rating_promedio': 1, 'partidos': 1}
+        ).sort('goles', -1).limit(20))
+        return jsonify(jugadores)
+    except Exception as e:
+        return jsonify([])
+
+@app.route('/api/recomendaciones_jugador/<nombre>')
+def api_recomendaciones_jugador(nombre):
+    """Recomendaciones de apuesta para un jugador"""
+    try:
+        jugador = db.estadisticas_jugadores_bzzoiro.find_one({"nombre": nombre})
+        
+        if not jugador:
+            return jsonify({"error": "Jugador no encontrado"}), 404
+        
+        recomendaciones = []
+        
+        # Recomendación de gol
+        prob_gol = min(85, jugador.get('goles_por_partido', 0) * 45)
+        if prob_gol > 20:
+            recomendaciones.append({
+                "mercado": "⚽ GOL",
+                "apuesta": f"{jugador['nombre']} anotará un gol",
+                "probabilidad": round(prob_gol, 1),
+                "cuota_sugerida": round(100 / prob_gol, 2),
+                "estadistica": f"{jugador.get('goles', 0)} goles en {jugador.get('partidos', 0)} partidos"
+            })
+        
+        # Recomendación de tiros
+        tiros_por_partido = jugador.get('tiros_por_partido', 0)
+        if tiros_por_partido > 3:
+            prob_tiros = min(80, 40 + tiros_por_partido * 8)
+            recomendaciones.append({
+                "mercado": "🎯 TIROS",
+                "apuesta": f"{jugador['nombre']} - Más de 2.5 tiros",
+                "probabilidad": round(prob_tiros, 1),
+                "cuota_sugerida": round(100 / prob_tiros, 2),
+                "estadistica": f"{jugador.get('tiros_totales', 0)} tiros en {jugador.get('partidos', 0)} partidos"
+            })
+        
+        return jsonify({
+            "jugador": jugador['nombre'],
+            "estadisticas": {
+                "partidos": jugador.get('partidos', 0),
+                "goles_por_partido": jugador.get('goles_por_partido', 0),
+                "tiros_por_partido": jugador.get('tiros_por_partido', 0),
+                "rating_promedio": jugador.get('rating_promedio', 0)
+            },
+            "recomendaciones": recomendaciones
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
