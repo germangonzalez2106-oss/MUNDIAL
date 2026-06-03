@@ -725,15 +725,7 @@ HTML = """
         <div class="chart-box"><h3>⚽ Goles Totales</h3><canvas id="golesChart"></canvas></div>
     </div>
     
-    <!-- Pronóstico -->
-    <h2>🔮 Pronóstico</h2>
-    <div class="flex">
-        <select id="eqLocal"><option value="">Local</option>{% for s in selecciones %}<option>{{ s.nombre }}</option>{% endfor %}</select>
-        <span>VS</span>
-        <select id="eqVisitante"><option value="">Visitante</option>{% for s in selecciones %}<option>{{ s.nombre }}</option>{% endfor %}</select>
-        <button class="btn-orange" onclick="calcularPronostico()">🔮 Calcular</button>
-    </div>
-    <div id="pronosticoResultado" class="results"></div>
+    
     <!-- Apuestas con valor -->
 <h2>💰 OPORTUNIDADES DE VALOR</h2>
 <div class="flex" style="margin-bottom: 10px;">
