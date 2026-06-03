@@ -14,33 +14,73 @@ try:
     client = MongoClient(MONGO_URI, tlsAllowInvalidCertificates=True)
     db = client['mundial_2026']
     coleccion = db['selecciones']
+    
     print(f"✅ Conectado: {coleccion.count_documents({})} selecciones")
 except Exception as e:
     print(f"❌ Error: {e}")
     coleccion = None
+    
+# ==================== CARGAR DATOS DESDE MONGODB ====================
+
+def cargar_estadisticas_ligas():
+    """Carga estadísticas de ligas desde MongoDB"""
+    stats = {}
+    try:
+        datos = list(db.estadisticas_ligas.find({}, {'_id': 0}))
+        for d in datos:
+            stats[d['liga']] = {
+                "goles": d.get('goles', 2.65),
+                "corners": d.get('corners', 9.8),
+                "tiros": d.get('tiros', 21.5),
+                "tiros_puerta": d.get('tiros_puerta', 7.8),
+                "amarillas": d.get('amarillas', 3.8)
+            }
+        print(f"✅ Estadísticas de {len(stats)} ligas cargadas desde MongoDB")
+        return stats
+    except Exception as e:
+        print(f"⚠️ Error cargando estadísticas: {e}")
+        return {}
+
+def cargar_ranking_fifa():
+    """Carga ranking FIFA desde MongoDB"""
+    ranking = {}
+    try:
+        datos = list(db.ranking_fifa.find({}, {'_id': 0}))
+        for d in datos:
+            ranking[d['seleccion']] = d['ranking']
+        print(f"✅ Ranking FIFA de {len(ranking)} selecciones cargado desde MongoDB")
+        return ranking
+    except Exception as e:
+        print(f"⚠️ Error cargando ranking: {e}")
+        return {}
+
+# Cargar datos al iniciar la app
+ESTADISTICAS_POR_LIGA = cargar_estadisticas_ligas()
+RANKING_FIFA = cargar_ranking_fifa()
+
 
 
 
 # ==================== ESTADÍSTICAS PROMEDIO POR LIGA ====================
 # Datos basados en promedios reales de las principales ligas (temporada 2024-2025)
-ESTADISTICAS_POR_LIGA = {
-    "Premier League": {"goles": 2.82, "corners": 10.5, "tiros": 23.2, "tiros_puerta": 8.4, "amarillas": 3.8},
-    "La Liga": {"goles": 2.58, "corners": 9.8, "tiros": 21.5, "tiros_puerta": 7.8, "amarillas": 4.2},
-    "Serie A": {"goles": 2.68, "corners": 9.5, "tiros": 20.8, "tiros_puerta": 7.5, "amarillas": 4.0},
-    "Bundesliga": {"goles": 3.02, "corners": 10.8, "tiros": 24.5, "tiros_puerta": 8.8, "amarillas": 3.5},
-    "Ligue 1": {"goles": 2.52, "corners": 9.2, "tiros": 19.8, "tiros_puerta": 7.2, "amarillas": 3.9},
-    "MLS": {"goles": 2.95, "corners": 9.0, "tiros": 21.0, "tiros_puerta": 7.5, "amarillas": 3.2},
-    "default": {"goles": 2.65, "corners": 9.8, "tiros": 21.5, "tiros_puerta": 7.8, "amarillas": 3.8}
-}
+#ESTADISTICAS_POR_LIGA = {
+ #   "Premier League": {"goles": 2.82, "corners": 10.5, "tiros": 23.2, "tiros_puerta": 8.4, "amarillas": 3.8},
+  #  "La Liga": {"goles": 2.58, "corners": 9.8, "tiros": 21.5, "tiros_puerta": 7.8, "amarillas": 4.2},
+   # "Serie A": {"goles": 2.68, "corners": 9.5, "tiros": 20.8, "tiros_puerta": 7.5, "amarillas": 4.0},
+   # "Bundesliga": {"goles": 3.02, "corners": 10.8, "tiros": 24.5, "tiros_puerta": 8.8, "amarillas": 3.5},
+   # "Ligue 1": {"goles": 2.52, "corners": 9.2, "tiros": 19.8, "tiros_puerta": 7.2, "amarillas": 3.9},
+   # "MLS": {"goles": 2.95, "corners": 9.0, "tiros": 21.0, "tiros_puerta": 7.5, "amarillas": 3.2},
+    #"default": {"goles": 2.65, "corners": 9.8, "tiros": 21.5, "tiros_puerta": 7.8, "amarillas": 3.8}
+#}
 
 # Ranking FIFA de selecciones
-RANKING_FIFA = {
-    "Argentina": 1, "Francia": 2, "Brasil": 3, "Inglaterra": 4, "España": 5,
-    "Países Bajos": 6, "Portugal": 7, "Alemania": 8, "Bélgica": 9, "Croacia": 10,
-    "Uruguay": 11, "Colombia": 12, "México": 13, "Estados Unidos": 14, "Marruecos": 15,
-    "Senegal": 16, "Japón": 17, "Corea del Sur": 18, "Australia": 19, "Suiza": 20,
-    "Dinamarca": 21, "Polonia": 22, "Canadá": 23, "Noruega": 24, "Egipto": 25,
-}
+#RANKING_FIFA = {
+ #   "Argentina": 1, "Francia": 2, "Brasil": 3, "Inglaterra": 4, "España": 5,
+  #  "Países Bajos": 6, "Portugal": 7, "Alemania": 8, "Bélgica": 9, "Croacia": 10,
+   # "Uruguay": 11, "Colombia": 12, "México": 13, "Estados Unidos": 14, "Marruecos": 15,
+   # "Senegal": 16, "Japón": 17, "Corea del Sur": 18, "Australia": 19, "Suiza": 20,
+   # "Dinamarca": 21, "Polonia": 22, "Canadá": 23, "Noruega": 24, "Egipto": 25,
+#}
 
 
 # ==================== JUGADORES MANUALES ====================
@@ -238,9 +278,9 @@ def obtener_todos_resultados(continente=None):
 # ==================== FUNCIONES ====================
 
 def calcular_fuerza_equipo(nombre_equipo):
-    """Calcula la fuerza del equipo basada en ranking FIFA (1 es mejor)"""
-    ranking = RANKING_FIFA.get(nombre_equipo, 15)
-    # Convertir ranking a fuerza (0-1)
+    """Calcula la fuerza del equipo usando ranking de MongoDB"""
+    ranking = RANKING_FIFA.get(nombre_equipo, 25)
+    # Fuerza entre 0.3 y 0.9 (mejor ranking = mayor fuerza)
     fuerza = max(0.3, min(0.9, (100 - ranking) / 100))
     return fuerza
 
