@@ -1834,7 +1834,7 @@ def api_top_jugadores_estadisticas():
         jugadores = list(db.estadisticas_jugadores_bzzoiro.find(
             {"participa_mundial": {"$eq": True}}, 
             {'_id': 0, 'nombre': 1, 'goles': 1, 'goles_por_partido': 1, 
-             'tiros_por_partido': 1, 'rating_promedio': 1, 'partidos': 1'seleccion': 1}
+             'tiros_por_partido': 1, 'rating_promedio': 1, 'partidos': 1, 'seleccion': 1}
         ).sort('goles', -1).limit(20))
         return jsonify(jugadores)
     except Exception as e:
