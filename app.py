@@ -1942,7 +1942,7 @@ def top_jugadores():
 
 @app.route('/api/analisis_partido/<local>/<visitante>')
 def api_analisis_partido(local, visitante):
-    """Análisis completo del partido con xG y forma reciente"""
+    """Análisis completo del partido con xG, forma reciente y tiros de jugadores"""
     try:
         # Obtener datos de los equipos
         local_data = db.selecciones.find_one({"nombre": local})
@@ -1958,42 +1958,66 @@ def api_analisis_partido(local, visitante):
         # Recomendaciones generales
         recomendaciones_generales = generar_recomendaciones(estadisticas)
         
+        # Recomendaciones de tiros por jugador
+        recomendaciones_tiros = []
+        
+        # Obtener jugadores de ambos equipos con estadísticas
+        for seleccion in [local, visitante]:
+            jugadores = list(db.estadisticas_jugadores_bzzoiro.find(
+                {"seleccion": seleccion, "participa_mundial": True},
+                {'_id': 0, 'nombre': 1, 'tiros_por_partido': 1, 'tiros_totales': 1, 'partidos': 1, 'goles': 1}
+            ).sort('tiros_por_partido', -1).limit(5))
+            
+            for j in jugadores:
+                tiros_partido = j.get('tiros_por_partido', 0)
+                if tiros_partido and tiros_partido > 2.5:
+                    prob_tiros = min(80, 40 + tiros_partido * 8)
+                    recomendaciones_tiros.append({
+                        "tipo": "🎯 TIROS",
+                        "jugador": j['nombre'],
+                        "equipo": seleccion,
+                        "apuesta": f"{j['nombre']} - Más de 1.5 tiros",
+                        "probabilidad": round(prob_tiros, 1),
+                        "cuota_sugerida": round(100 / prob_tiros, 2),
+                        "estadistica": f"{j.get('tiros_totales', 0)} tiros en {j.get('partidos', 0)} partidos",
+                        "tiros_por_partido": tiros_partido
+                    })
+        
         # Recomendaciones de jugadores con xG destacado
         recomendaciones_xg = []
-        jugadores_destacados = list(db.estadisticas_jugadores_bzzoiro.find(
-            {"xG_total": {"$gt": 5}, "participa_mundial": True},
-            {'_id': 0, 'nombre': 1, 'goles': 1, 'xG_total': 1, 'xA_total': 1, 'seleccion': 1, 'tiros_por_partido': 1}
+        jugadores_xg = list(db.estadisticas_jugadores_bzzoiro.find(
+            {"xG_total": {"$gt": 5}, "participa_mundial": True, "seleccion": {"$in": [local, visitante]}},
+            {'_id': 0, 'nombre': 1, 'goles': 1, 'xG_total': 1, 'seleccion': 1}
         ).limit(10))
         
-        for j in jugadores_destacados:
-            if j['seleccion'] in [local, visitante]:
-                xG = j.get('xG_total', 0)
-                goles = j.get('goles', 0)
-                diferencia = round(goles - xG, 1)
-                
-                if diferencia > 1.5:
-                    mensaje = f"⚠️ Sobre rendimiento: {diferencia:.1f} goles más de lo esperado"
-                elif diferencia < -1.5:
-                    mensaje = f"🔥 VALOR: {abs(diferencia):.1f} goles menos de lo esperado - Probable mejora"
-                else:
-                    mensaje = f"✅ Rendimiento normal ({goles} goles reales vs {xG:.1f} xG)"
-                
-                recomendaciones_xg.append({
-                    "tipo": "📊 xG",
-                    "jugador": j['nombre'],
-                    "equipo": j['seleccion'],
-                    "apuesta": f"{j['nombre']} - Análisis xG",
-                    "probabilidad": 0,
-                    "cuota_sugerida": 0, # No aplica para xG
-                    "estadistica": mensaje,
-                    "xg": xG,
-                    "goles": goles
-                })
+        for j in jugadores_xg:
+            xG = j.get('xG_total', 0)
+            goles = j.get('goles', 0)
+            diferencia = round(goles - xG, 1)
+            
+            if diferencia > 1.5:
+                mensaje = f"⚠️ Sobre rendimiento: {diferencia:.1f} goles más de lo esperado"
+            elif diferencia < -1.5:
+                mensaje = f"🔥 VALOR: {abs(diferencia):.1f} goles menos de lo esperado - Probable mejora"
+            else:
+                mensaje = f"✅ Rendimiento normal ({goles} goles reales vs {xG:.1f} xG)"
+            
+            recomendaciones_xg.append({
+                "tipo": "📊 xG",
+                "jugador": j['nombre'],
+                "equipo": j['seleccion'],
+                "apuesta": f"{j['nombre']} - Análisis xG",
+                "probabilidad": 0,
+                "cuota_sugerida": 0,
+                "estadistica": mensaje,
+                "xg": xG,
+                "goles": goles
+            })
         
         # Combinar todas las recomendaciones
-        todas_recomendaciones = recomendaciones_generales + recomendaciones_xg
+        todas_recomendaciones = recomendaciones_generales + recomendaciones_tiros + recomendaciones_xg
         
-        # Ordenar por probabilidad
+        # Ordenar por probabilidad (las que tienen probabilidad primero)
         todas_recomendaciones.sort(key=lambda x: x.get('probabilidad', 0), reverse=True)
         
         return jsonify({
@@ -2007,7 +2031,6 @@ def api_analisis_partido(local, visitante):
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route('/estadisticas_jugador/<nombre>')
 def estadisticas_jugador(nombre):
