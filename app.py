@@ -474,43 +474,53 @@ def generar_recomendaciones(estadisticas):
     
     # Recomendación de goles
     if estadisticas["goles"]["total"] > 2.5:
+        prob = min(85, 55 + (estadisticas["goles"]["total"] - 2.5) * 15)
         recomendaciones.append({
             "mercado": "⚽ GOLES",
             "apuesta": "Más de 2.5 goles",
-            "probabilidad": min(85, 55 + (estadisticas["goles"]["total"] - 2.5) * 15),
-            "estadistica": f"{estadisticas['goles']['total']} goles esperados"
+            "probabilidad": round(prob, 1),
+            "estadistica": f"{estadisticas['goles']['total']} goles esperados",
+            "cuota_sugerida": round(100 / prob, 2)
         })
     else:
+        prob = min(85, 55 + (2.5 - estadisticas["goles"]["total"]) * 15)
         recomendaciones.append({
             "mercado": "⚽ GOLES",
             "apuesta": "Menos de 2.5 goles",
-            "probabilidad": min(85, 55 + (2.5 - estadisticas["goles"]["total"]) * 15),
-            "estadistica": f"{estadisticas['goles']['total']} goles esperados"
+            "probabilidad": round(prob, 1),
+            "estadistica": f"{estadisticas['goles']['total']} goles esperados",
+            "cuota_sugerida": round(100 / prob, 2)
         })
     
     # Recomendación de córners
     if estadisticas["corners"]["total"] > 9.5:
+        prob = min(80, 50 + (estadisticas["corners"]["total"] - 9.5) * 12)
         recomendaciones.append({
             "mercado": "🔄 CÓRNERS",
             "apuesta": "Más de 9.5 córners",
-            "probabilidad": min(80, 50 + (estadisticas["corners"]["total"] - 9.5) * 12),
-            "estadistica": f"{estadisticas['corners']['total']} córners esperados"
+            "probabilidad": round(prob, 1),
+            "estadistica": f"{estadisticas['corners']['total']} córners esperados",
+            "cuota_sugerida": round(100 / prob, 2)
         })
     else:
+        prob = min(80, 50 + (9.5 - estadisticas["corners"]["total"]) * 12)
         recomendaciones.append({
             "mercado": "🔄 CÓRNERS",
             "apuesta": "Menos de 9.5 córners",
-            "probabilidad": min(80, 50 + (9.5 - estadisticas["corners"]["total"]) * 12),
-            "estadistica": f"{estadisticas['corners']['total']} córners esperados"
+            "probabilidad": round(prob, 1),
+            "estadistica": f"{estadisticas['corners']['total']} córners esperados",
+            "cuota_sugerida": round(100 / prob, 2)
         })
     
     # Recomendación de tiros totales
-    if estadisticas["tiros"]["total"] > 22:
+    if estadisticas.get("tiros") and estadisticas["tiros"]["total"] > 22:
+        prob = min(75, 50 + (estadisticas["tiros"]["total"] - 22) * 8)
         recomendaciones.append({
             "mercado": "🎯 TIROS",
             "apuesta": "Más de 22 tiros totales",
-            "probabilidad": min(75, 50 + (estadisticas["tiros"]["total"] - 22) * 8),
-            "estadistica": f"{estadisticas['tiros']['total']} tiros esperados"
+            "probabilidad": round(prob, 1),
+            "estadistica": f"{estadisticas['tiros']['total']} tiros esperados",
+            "cuota_sugerida": round(100 / prob, 2)
         })
     
     return recomendaciones
@@ -1974,7 +1984,7 @@ def api_analisis_partido(local, visitante):
                     "equipo": j['seleccion'],
                     "apuesta": f"{j['nombre']} - Análisis xG",
                     "probabilidad": 0,
-                    "cuota_sugerida": 0,
+                    "cuota_sugerida": 0, # No aplica para xG
                     "estadistica": mensaje,
                     "xg": xG,
                     "goles": goles
