@@ -469,7 +469,7 @@ def predecir_estadisticas_partido(equipo_local, equipo_visitante, liga="default"
     }
 
 def generar_recomendaciones(estadisticas):
-    """Genera recomendaciones de apuesta basadas en estadísticas esperadas"""
+    """Genera recomendaciones de apuesta incluyendo BTTS"""
     recomendaciones = []
     
     # Recomendación de goles
@@ -490,6 +490,31 @@ def generar_recomendaciones(estadisticas):
             "probabilidad": round(prob, 1),
             "estadistica": f"{estadisticas['goles']['total']} goles esperados",
             "cuota_sugerida": round(100 / prob, 2)
+        })
+    
+    # Recomendación de BTTS (Ambos equipos marcan)
+    goles_local = estadisticas["goles"]["local"]
+    goles_visitante = estadisticas["goles"]["visitante"]
+    
+    # Probabilidad de que ambos marquen basada en goles esperados
+    prob_si = min(75, 30 + (goles_local * 15) + (goles_visitante * 15))
+    prob_no = 100 - prob_si
+    
+    if prob_si > 45:
+        recomendaciones.append({
+            "mercado": "🔄 BTTS",
+            "apuesta": "Ambos equipos marcan (Sí)",
+            "probabilidad": round(prob_si, 1),
+            "estadistica": f"Local: {goles_local} goles esperados | Visitante: {goles_visitante} goles esperados",
+            "cuota_sugerida": round(100 / prob_si, 2)
+        })
+    else:
+        recomendaciones.append({
+            "mercado": "🔄 BTTS",
+            "apuesta": "Ambos equipos marcan (No)",
+            "probabilidad": round(prob_no, 1),
+            "estadistica": f"Local: {goles_local} goles esperados | Visitante: {goles_visitante} goles esperados",
+            "cuota_sugerida": round(100 / prob_no, 2)
         })
     
     # Recomendación de córners
@@ -524,7 +549,6 @@ def generar_recomendaciones(estadisticas):
         })
     
     return recomendaciones
-
 
 # ==================== OPORTUNIDADES DE VALOR ====================
 
