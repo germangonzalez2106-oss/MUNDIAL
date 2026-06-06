@@ -393,13 +393,36 @@ def calcular_fuerza_equipo(nombre_equipo):
     return fuerza
 
 def predecir_estadisticas_partido(equipo_local, equipo_visitante, liga="default"):
-    """Predice estadísticas del partido basado en fuerza de equipos y promedios de liga"""
+    """Predice estadísticas incluyendo forma reciente"""
     
     stats_liga = ESTADISTICAS_POR_LIGA.get(liga, ESTADISTICAS_POR_LIGA["default"])
     
-    # Fuerza de cada equipo
-    fuerza_local = calcular_fuerza_equipo(equipo_local)
-    fuerza_visitante = calcular_fuerza_equipo(equipo_visitante)
+    # Obtener forma reciente de los equipos
+    local_data = db.selecciones.find_one({"nombre": equipo_local})
+    visitante_data = db.selecciones.find_one({"nombre": equipo_visitante})
+    
+    forma_local = local_data.get('forma_reciente', {}) if local_data else {}
+    forma_visitante = visitante_data.get('forma_reciente', {}) if visitante_data else {}
+    
+    # Factor de forma (0.8 a 1.2)
+    factor_forma_local = 1.0
+    factor_forma_visitante = 1.0
+    
+    if forma_local:
+        puntos_local = forma_local.get('puntos', 0)
+        max_puntos = forma_local.get('ultimos_partidos', 5) * 3
+        if max_puntos > 0:
+            factor_forma_local = 0.8 + (puntos_local / max_puntos) * 0.4
+    
+    if forma_visitante:
+        puntos_visitante = forma_visitante.get('puntos', 0)
+        max_puntos = forma_visitante.get('ultimos_partidos', 5) * 3
+        if max_puntos > 0:
+            factor_forma_visitante = 0.8 + (puntos_visitante / max_puntos) * 0.4
+    
+    # Fuerza de cada equipo (combinando ranking y forma)
+    fuerza_local = calcular_fuerza_equipo(equipo_local) * factor_forma_local
+    fuerza_visitante = calcular_fuerza_equipo(equipo_visitante) * factor_forma_visitante
     
     # Factor de localía (+15% al local)
     factor_local = (fuerza_local * 1.15) / ((fuerza_local * 1.15) + fuerza_visitante)
@@ -440,7 +463,9 @@ def predecir_estadisticas_partido(equipo_local, equipo_visitante, liga="default"
         "tiros_puerta": {
             "local": tiros_puerta_local,
             "visitante": tiros_puerta_visitante
-        }
+        },
+        "forma_local": forma_local,
+        "forma_visitante": forma_visitante
     }
 
 def generar_recomendaciones(estadisticas):
@@ -878,43 +903,70 @@ function analizarPartido() {
             let html = `
                 <div style="background: #0f3460; border-radius: 15px; padding: 20px;">
                     <h3 style="text-align: center; color: #4CAF50;">📊 ${data.local} vs ${data.visitante}</h3>
-                    <p style="text-align: center; color: #aaa;">Análisis basado en ranking FIFA y estadísticas de liga</p>
-                    
-                    <h4>📈 ESTADÍSTICAS ESPERADAS</h4>
-                    <div class="grid-3">
-                        <div class="stat-card">
-                            <div class="big-number">${data.estadisticas.goles.total}</div>
-                            <p>⚽ GOLES TOTALES</p>
-                            <small>${data.estadisticas.goles.local} - ${data.estadisticas.goles.visitante}</small>
+                    <p style="text-align: center; color: #aaa;">Análisis basado en ranking FIFA, forma reciente y estadísticas</p>
+            `;
+            
+            // Mostrar forma reciente si existe
+            if (data.forma_local && Object.keys(data.forma_local).length > 0) {
+                html += `
+                    <div class="grid-3" style="margin: 15px 0;">
+                        <div class="stat-card" style="background: #1a4a2e;">
+                            <h4>🏆 FORMA</h4>
+                            <div style="font-size: 1.5em;">${data.forma_local.resultados || '-'}</div>
+                            <small>${data.local}</small>
                         </div>
-                        <div class="stat-card">
-                            <div class="big-number">${data.estadisticas.corners.total}</div>
-                            <p>🔄 CÓRNERS TOTALES</p>
-                            <small>${data.estadisticas.corners.local} - ${data.estadisticas.corners.visitante}</small>
+                        <div class="stat-card" style="background: #1a2a4e;">
+                            <h4>⚽ DIFERENCIA</h4>
+                            <div style="font-size: 1.5em;">${data.forma_local.diferencia_goles || 0}</div>
+                            <small>GF: ${data.forma_local.goles_favor || 0} | GC: ${data.forma_local.goles_contra || 0}</small>
                         </div>
-                        <div class="stat-card">
-                            <div class="big-number">${data.estadisticas.tiros.total}</div>
-                            <p>🎯 TIROS TOTALES</p>
-                            <small>${data.estadisticas.tiros.local} - ${data.estadisticas.tiros.visitante}</small>
+                        <div class="stat-card" style="background: #1a4a2e;">
+                            <h4>🏆 FORMA</h4>
+                            <div style="font-size: 1.5em;">${data.forma_visitante.resultados || '-'}</div>
+                            <small>${data.visitante}</small>
                         </div>
                     </div>
-                    
-                    <h4>🎯 RECOMENDACIONES DE APUESTA</h4>
-                    <div style="display: flex; flex-direction: column; gap: 15px;">
+                `;
+            }
+            
+            // Estadísticas esperadas
+            html += `
+                <h4>📈 ESTADÍSTICAS ESPERADAS</h4>
+                <div class="grid-3">
+                    <div class="stat-card">
+                        <div class="big-number">${data.estadisticas.goles.total}</div>
+                        <p>⚽ GOLES TOTALES</p>
+                        <small>${data.estadisticas.goles.local} - ${data.estadisticas.goles.visitante}</small>
+                    </div>
+                    <div class="stat-card">
+                        <div class="big-number">${data.estadisticas.corners.total}</div>
+                        <p>🔄 CÓRNERS TOTALES</p>
+                        <small>${data.estadisticas.corners.local} - ${data.estadisticas.corners.visitante}</small>
+                    </div>
+                    <div class="stat-card">
+                        <div class="big-number">${data.estadisticas.tiros.total}</div>
+                        <p>🎯 TIROS TOTALES</p>
+                        <small>${data.estadisticas.tiros.local} - ${data.estadisticas.tiros.visitante}</small>
+                    </div>
+                </div>
+                
+                <h4>🎯 RECOMENDACIONES DE APUESTA</h4>
+                <div style="display: flex; flex-direction: column; gap: 15px;">
             `;
             
             for (let rec of data.recomendaciones) {
-                let color = rec.probabilidad > 65 ? '#1a4a2e' : '#2a4a3e';
-                // Usar 'tipo' para recomendaciones de jugadores, 'mercado' para las generales
+                let color = rec.probabilidad > 65 ? '#1a4a2e' : (rec.probabilidad > 40 ? '#2a4a3e' : '#3a4a4e');
                 let titulo = rec.tipo || rec.mercado;
                 html += `
                     <div style="background: ${color}; border-radius: 12px; padding: 15px; border-left: 4px solid #FFC107;">
                         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
                             <div>
                                 <strong style="font-size: 1.2em;">${titulo}</strong>
-                                <p style="margin: 5px 0;">${rec.apuesta}</p>
-                                <small>📊 ${rec.estadistica || ''}</small>
+                                <p style="margin: 5px 0;">${rec.apuesta || rec.estadistica}</p>
+                                ${rec.estadistica ? `<small>📊 ${rec.estadistica}</small>` : ''}
+                                ${rec.xg ? `<small style="display: block; margin-top: 5px;">🎯 xG: ${rec.xg.toFixed(1)} | Goles reales: ${rec.goles}</small>` : ''}
                             </div>
+                            ${rec.probabilidad > 0 ? `
                             <div style="text-align: center;">
                                 <div class="big-number" style="font-size: 1.8em;">${rec.probabilidad}%</div>
                                 <small>Probabilidad</small>
@@ -923,6 +975,7 @@ function analizarPartido() {
                                 <div class="big-number" style="font-size: 1.8em;">${rec.cuota_sugerida}</div>
                                 <small>Cuota sugerida</small>
                             </div>
+                            ` : ''}
                         </div>
                     </div>
                 `;
@@ -932,6 +985,7 @@ function analizarPartido() {
                     </div>
                     <p style="text-align: center; color: #aaa; margin-top: 20px; font-size: 12px;">
                         📅 Análisis generado: ${data.timestamp}<br>
+                        📊 xG = Goles esperados según calidad de las ocasiones<br>
                         ⚠️ Las apuestas tienen riesgo. Esta herramienta es solo para análisis estadístico.
                     </p>
                 </div>
@@ -1878,30 +1932,67 @@ def top_jugadores():
 
 @app.route('/api/analisis_partido/<local>/<visitante>')
 def api_analisis_partido(local, visitante):
-    """Análisis completo del partido con recomendaciones de jugadores"""
+    """Análisis completo del partido con xG y forma reciente"""
     try:
+        # Obtener datos de los equipos
+        local_data = db.selecciones.find_one({"nombre": local})
+        visitante_data = db.selecciones.find_one({"nombre": visitante})
+        
+        # Forma reciente
+        forma_local = local_data.get('forma_reciente', {}) if local_data else {}
+        forma_visitante = visitante_data.get('forma_reciente', {}) if visitante_data else {}
+        
         # Estadísticas del partido
         estadisticas = predecir_estadisticas_partido(local, visitante)
         
-        # Recomendaciones de mercado general (goles, corners, etc.)
+        # Recomendaciones generales
         recomendaciones_generales = generar_recomendaciones(estadisticas)
         
-        # Recomendaciones de jugadores clave
-        recomendaciones_jugadores = generar_recomendaciones_partido(local, visitante)
+        # Recomendaciones de jugadores con xG destacado
+        recomendaciones_xg = []
+        jugadores_destacados = list(db.estadisticas_jugadores_bzzoiro.find(
+            {"xG_total": {"$gt": 5}, "participa_mundial": True},
+            {'_id': 0, 'nombre': 1, 'goles': 1, 'xG_total': 1, 'xA_total': 1, 'seleccion': 1, 'tiros_por_partido': 1}
+        ).limit(10))
         
-        # Combinar ambas
-        todas_recomendaciones = recomendaciones_generales + recomendaciones_jugadores
+        for j in jugadores_destacados:
+            if j['seleccion'] in [local, visitante]:
+                xG = j.get('xG_total', 0)
+                goles = j.get('goles', 0)
+                diferencia = round(goles - xG, 1)
+                
+                if diferencia > 1.5:
+                    mensaje = f"⚠️ Sobre rendimiento: {diferencia:.1f} goles más de lo esperado"
+                elif diferencia < -1.5:
+                    mensaje = f"🔥 VALOR: {abs(diferencia):.1f} goles menos de lo esperado - Probable mejora"
+                else:
+                    mensaje = f"✅ Rendimiento normal ({goles} goles reales vs {xG:.1f} xG)"
+                
+                recomendaciones_xg.append({
+                    "tipo": "📊 xG",
+                    "jugador": j['nombre'],
+                    "equipo": j['seleccion'],
+                    "apuesta": f"{j['nombre']} - Análisis xG",
+                    "probabilidad": 0,
+                    "cuota_sugerida": 0,
+                    "estadistica": mensaje,
+                    "xg": xG,
+                    "goles": goles
+                })
         
-        for rec in todas_recomendaciones:
-            if 'cuota_sugerida' not in rec:
-                cuota_justa = round(100 / rec.get("probabilidad", 50), 2)
-                rec["cuota_sugerida"] = round(cuota_justa * 0.95, 2)
+        # Combinar todas las recomendaciones
+        todas_recomendaciones = recomendaciones_generales + recomendaciones_xg
+        
+        # Ordenar por probabilidad
+        todas_recomendaciones.sort(key=lambda x: x.get('probabilidad', 0), reverse=True)
         
         return jsonify({
             "local": local,
             "visitante": visitante,
+            "forma_local": forma_local,
+            "forma_visitante": forma_visitante,
             "estadisticas": estadisticas,
-            "recomendaciones": todas_recomendaciones,
+            "recomendaciones": todas_recomendaciones[:15],
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
     except Exception as e:
