@@ -386,63 +386,68 @@ def obtener_todos_resultados(continente=None):
 # ==================== FUNCIONES ====================
 
 def calcular_fuerza_equipo(nombre_equipo):
-    """Calcula la fuerza del equipo usando ranking de MongoDB"""
-    ranking = RANKING_FIFA.get(nombre_equipo, 25)
-    # Fuerza entre 0.3 y 0.9 (mejor ranking = mayor fuerza)
-    fuerza = max(0.3, min(0.9, (100 - ranking) / 100))
+    """Calcula la fuerza del equipo basada en ranking FIFA"""
+    # Obtener ranking desde MongoDB
+    equipo_data = db.selecciones.find_one({"nombre": nombre_equipo})
+    
+    if equipo_data:
+        ranking = equipo_data.get('ranking_fifa', 50)
+    else:
+        ranking = 50
+    
+    # Fuerza entre 0.15 y 1.0 (ranking 1 = fuerza 1.0, ranking 85 = fuerza 0.15)
+    fuerza = max(0.15, min(1.0, (100 - ranking) / 100))
     return fuerza
 
 def predecir_estadisticas_partido(equipo_local, equipo_visitante, liga="default"):
-    """Predice estadísticas incluyendo forma reciente"""
+    """Predice estadísticas del partido basado en ranking FIFA"""
     
     stats_liga = ESTADISTICAS_POR_LIGA.get(liga, ESTADISTICAS_POR_LIGA["default"])
     
-    # Obtener forma reciente de los equipos
+    # Obtener ranking FIFA de los equipos desde MongoDB
     local_data = db.selecciones.find_one({"nombre": equipo_local})
     visitante_data = db.selecciones.find_one({"nombre": equipo_visitante})
     
-    forma_local = local_data.get('forma_reciente', {}) if local_data else {}
-    forma_visitante = visitante_data.get('forma_reciente', {}) if visitante_data else {}
+    if not local_data or not visitante_data:
+        print(f"⚠️ Datos no encontrados: {equipo_local} o {equipo_visitante}")
+        # Fallback a valores por defecto
+        ranking_local = 50
+        ranking_visitante = 50
+    else:
+        ranking_local = local_data.get('ranking_fifa', 50)
+        ranking_visitante = visitante_data.get('ranking_fifa', 50)
     
-    # Factor de forma (0.8 a 1.2)
-    factor_forma_local = 1.0
-    factor_forma_visitante = 1.0
+    print(f"🔍 DEBUG: {equipo_local} ranking {ranking_local}, {equipo_visitante} ranking {ranking_visitante}")
     
-    if forma_local:
-        puntos_local = forma_local.get('puntos', 0)
-        max_puntos = forma_local.get('ultimos_partidos', 5) * 3
-        if max_puntos > 0:
-            factor_forma_local = 0.8 + (puntos_local / max_puntos) * 0.4
+    # Calcular fuerza del equipo (menor ranking = mejor = mayor fuerza)
+    # Formula: el mejor equipo (ranking 1) tiene fuerza 1.0, el peor (ranking 85) tiene fuerza ~0.15
+    fuerza_local = max(0.15, min(1.0, (100 - ranking_local) / 100))
+    fuerza_visitante = max(0.15, min(1.0, (100 - ranking_visitante) / 100))
     
-    if forma_visitante:
-        puntos_visitante = forma_visitante.get('puntos', 0)
-        max_puntos = forma_visitante.get('ultimos_partidos', 5) * 3
-        if max_puntos > 0:
-            factor_forma_visitante = 0.8 + (puntos_visitante / max_puntos) * 0.4
+    # Aplicar ventaja de localía (+20% al local)
+    fuerza_local_con_localia = fuerza_local * 1.2
     
-    # Fuerza de cada equipo (combinando ranking y forma)
-    fuerza_local = calcular_fuerza_equipo(equipo_local) * factor_forma_local
-    fuerza_visitante = calcular_fuerza_equipo(equipo_visitante) * factor_forma_visitante
+    # Calcular factor de distribución
+    total_fuerza = fuerza_local_con_localia + fuerza_visitante
+    factor_local = fuerza_local_con_localia / total_fuerza if total_fuerza > 0 else 0.5
+    factor_visitante = fuerza_visitante / total_fuerza if total_fuerza > 0 else 0.5
     
-    # Factor de localía (+15% al local)
-    factor_local = (fuerza_local * 1.15) / ((fuerza_local * 1.15) + fuerza_visitante)
-    factor_visitante = 1 - factor_local
+    print(f"   Fuerza local: {fuerza_local:.2f} (con localía: {fuerza_local_con_localia:.2f})")
+    print(f"   Fuerza visitante: {fuerza_visitante:.2f}")
+    print(f"   Factores: Local {factor_local:.2f} - Visitante {factor_visitante:.2f}")
     
     # Calcular estadísticas esperadas
-    goles_esperados_local = round(stats_liga["goles"] * factor_local, 1)
-    goles_esperados_visitante = round(stats_liga["goles"] * factor_visitante, 1)
+    goles_esperados_local = round(stats_liga["goles"] * factor_local * 1.1, 1)
+    goles_esperados_visitante = round(stats_liga["goles"] * factor_visitante * 0.9, 1)
     goles_totales = round(goles_esperados_local + goles_esperados_visitante, 1)
     
-    corners_local = round(stats_liga["corners"] * factor_local, 1)
-    corners_visitante = round(stats_liga["corners"] * factor_visitante, 1)
+    corners_local = round(stats_liga["corners"] * factor_local * 1.1, 1)
+    corners_visitante = round(stats_liga["corners"] * factor_visitante * 0.9, 1)
     corners_totales = round(corners_local + corners_visitante, 1)
     
-    tiros_local = round(stats_liga["tiros"] * factor_local, 1)
-    tiros_visitante = round(stats_liga["tiros"] * factor_visitante, 1)
+    tiros_local = round(stats_liga["tiros"] * factor_local * 1.1, 1)
+    tiros_visitante = round(stats_liga["tiros"] * factor_visitante * 0.9, 1)
     tiros_totales = round(tiros_local + tiros_visitante, 1)
-    
-    tiros_puerta_local = round(stats_liga["tiros_puerta"] * factor_local, 1)
-    tiros_puerta_visitante = round(stats_liga["tiros_puerta"] * factor_visitante, 1)
     
     return {
         "goles": {
@@ -459,13 +464,7 @@ def predecir_estadisticas_partido(equipo_local, equipo_visitante, liga="default"
             "local": tiros_local,
             "visitante": tiros_visitante,
             "total": tiros_totales
-        },
-        "tiros_puerta": {
-            "local": tiros_puerta_local,
-            "visitante": tiros_puerta_visitante
-        },
-        "forma_local": forma_local,
-        "forma_visitante": forma_visitante
+        }
     }
 
 def generar_recomendaciones(estadisticas):
