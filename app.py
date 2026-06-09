@@ -707,6 +707,154 @@ def pronostico(local, visitante):
     return {'local': prob1, 'empate': probE, 'visitante': prob2, 'recomendacion': rec}
 
 # ==================== HTML ====================
+HTML_NBA = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>NBA - Mundial 2026</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { text-align: center; color: #4CAF50; margin-bottom: 10px; }
+        .nav { text-align: center; margin-bottom: 20px; }
+        .nav a { color: #4CAF50; text-decoration: none; margin: 0 10px; padding: 8px 20px; background: #0f3460; border-radius: 25px; display: inline-block; }
+        .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .stat-card { background: #1a1a2e; padding: 15px; border-radius: 10px; text-align: center; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #2a2a4e; }
+        th { background: #4CAF50; }
+        tr:hover { background: #1a2a4e; }
+        .conference { margin-top: 20px; }
+        .conference h3 { color: #FFC107; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="nav">
+        <a href="/">🏆 Mundial</a>
+        <a href="/nba">🏀 NBA</a>
+        <a href="/tenis">🎾 Tenis</a>
+        <a href="/jugador">🔍 Jugadores</a>
+        <a href="/top_jugadores">⭐ Top</a>
+        <a href="/recomendaciones_jugadores">🎯 Recomendaciones</a>
+    </div>
+    
+    <h1>🏀 NBA - Análisis Estadístico</h1>
+    
+    <div class="card">
+        <h2>📊 Clasificación</h2>
+        {% for group in standings.data.groups %}
+        <div class="conference">
+            <h3>{{ group.conference }}</h3>
+            <table>
+                <thead>运转<th>Equipo</th><th>Victorias</th><th>Derrotas</th><th>%</th></tr></thead>
+                <tbody>
+                {% for team in group.entries[:15] %}
+                <tr>
+                    <td><strong>{{ team.team.name }}</strong></td>
+                    <td>{{ team.wins }}</td>
+                    <td>{{ team.losses }}</td>
+                    <td>{{ (team.win_percentage * 100)|round(1) }}%</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+</body>
+</html>
+"""
+
+HTML_TENIS = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tenis - Mundial 2026</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { text-align: center; color: #4CAF50; margin-bottom: 10px; }
+        .nav { text-align: center; margin-bottom: 20px; }
+        .nav a { color: #4CAF50; text-decoration: none; margin: 0 10px; padding: 8px 20px; background: #0f3460; border-radius: 25px; display: inline-block; }
+        .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        .rankings { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #2a2a4e; }
+        th { background: #4CAF50; }
+        tr:hover { background: #1a2a4e; }
+        .rank { font-weight: bold; color: #FFC107; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="nav">
+        <a href="/">🏆 Mundial</a>
+        <a href="/nba">🏀 NBA</a>
+        <a href="/tenis">🎾 Tenis</a>
+        <a href="/jugador">🔍 Jugadores</a>
+        <a href="/top_jugadores">⭐ Top</a>
+        <a href="/recomendaciones_jugadores">🎯 Recomendaciones</a>
+    </div>
+    
+    <h1>🎾 Tenis - Ranking Mundial</h1>
+    
+    <div class="rankings">
+        <div class="card">
+            <h2>🏆 Ranking ATP</h2>
+            </table>
+                <thead><tr><th>#</th><th>Jugador</th><th>Puntos</th></tr></thead>
+                <tbody>
+                {% for player in atp.data.rankings[:20] %}
+                <tr>
+                    <td class="rank">{{ player.rank }}</td>
+                    <td><strong>{{ player.name }}</strong></td>
+                    <td>{{ player.points|round(0) }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="card">
+            <h2>🏆 Ranking WTA</h2>
+            <table>
+                <thead><tr><th>#</th><th>Jugador</th><th>Puntos</th></tr></thead>
+                <tbody>
+                {% for player in wta.data.rankings[:20] %}
+                <tr>
+                    <td class="rank">{{ player.rank }}</td>
+                    <td><strong>{{ player.name }}</strong></td>
+                    <td>{{ player.points|round(0) }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+"""
+
 HTML = """
 <!DOCTYPE html>
 <html>
@@ -2092,6 +2240,28 @@ def api_top_jugadores_estadisticas():
         return jsonify(jugadores)
     except Exception as e:
         return jsonify([])
+
+
+# ==================== NBA ROUTES ====================
+@app.route('/nba')
+def nba_page():
+    from sports_skills import nba
+    try:
+        standings = nba.get_standings()
+        return render_template_string(HTML_NBA, standings=standings)
+    except Exception as e:
+        return f"<h1>Error cargando NBA</h1><p>{str(e)}</p>"
+
+# ==================== TENIS ROUTES ====================
+@app.route('/tenis')
+def tenis_page():
+    from sports_skills import tennis
+    try:
+        atp = tennis.get_rankings(tour='ATP', limit=50)
+        wta = tennis.get_rankings(tour='WTA', limit=50)
+        return render_template_string(HTML_TENIS, atp=atp, wta=wta)
+    except Exception as e:
+        return f"<h1>Error cargando Tenis</h1><p>{str(e)}</p>"
 
 @app.route('/api/recomendaciones_jugador/<nombre>')
 def api_recomendaciones_jugador(nombre):
