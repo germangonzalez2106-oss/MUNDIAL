@@ -5,3 +5,9 @@ gunicorn==21.2.0
 requests==2.31.0
 sportly
 sportly[sofascore]
+pandas==2.1.0
+numpy==1.24.0
+xgboost==2.0.0
+scikit-learn==1.3.0
+joblib==1.3.0
+sports-skills
