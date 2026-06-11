@@ -20,6 +20,141 @@ except Exception as e:
     print(f"❌ Error: {e}")
     coleccion = None
 
+# En app.py, agregar función de caché
+
+def obtener_prediccion_cache(local, visitante):
+    """Obtiene predicción de caché si es reciente (menos de 6 horas)"""
+    from datetime import datetime, timedelta
+    
+    cache = db.predicciones_cache.find_one({
+        "local": local,
+        "visitante": visitante,
+        "timestamp": {"$gt": datetime.now() - timedelta(hours=6)}
+    })
+    
+    if cache:
+        print(f"📦 Usando caché para {local} vs {visitante}")
+        return cache.get('prediccion')
+    return None
+
+def guardar_prediccion_cache(local, visitante, prediccion):
+    """Guarda predicción en caché"""
+    from datetime import datetime
+    
+    db.predicciones_cache.update_one(
+        {"local": local, "visitante": visitante},
+        {"$set": {
+            "prediccion": prediccion,
+            "timestamp": datetime.now()
+        }},
+        upsert=True
+    )
+
+def predecir_estadisticas_partido_optimizado(equipo_local, equipo_visitante, liga="default"):
+    """Predice estadísticas con más variables"""
+    
+    stats_liga = ESTADISTICAS_POR_LIGA.get(liga, ESTADISTICAS_POR_LIGA["default"])
+    
+    # Obtener datos completos de los equipos
+    local_data = db.selecciones.find_one({"nombre": equipo_local})
+    visitante_data = db.selecciones.find_one({"nombre": equipo_visitante})
+    
+    if not local_data or not visitante_data:
+        return None
+    
+    # Ranking FIFA
+    ranking_local = local_data.get('ranking_fifa', 50)
+    ranking_visitante = visitante_data.get('ranking_fifa', 50)
+    
+    # Forma reciente (últimos 5 partidos)
+    forma_local = local_data.get('forma_reciente', {})
+    forma_visitante = visitante_data.get('forma_reciente', {})
+    
+    # Factor de forma (0.8 a 1.2)
+    factor_forma_local = 1.0
+    factor_forma_visitante = 1.0
+    
+    if forma_local:
+        puntos_local = forma_local.get('puntos', 0)
+        max_puntos = forma_local.get('ultimos_partidos', 5) * 3
+        if max_puntos > 0:
+            factor_forma_local = 0.85 + (puntos_local / max_puntos) * 0.3
+    
+    if forma_visitante:
+        puntos_visitante = forma_visitante.get('puntos', 0)
+        max_puntos = forma_visitante.get('ultimos_partidos', 5) * 3
+        if max_puntos > 0:
+            factor_forma_visitante = 0.85 + (puntos_visitante / max_puntos) * 0.3
+    
+    # Fuerza base (ranking)
+    fuerza_local = max(0.2, min(0.95, (100 - ranking_local) / 100))
+    fuerza_visitante = max(0.2, min(0.95, (100 - ranking_visitante) / 100))
+    
+    # Aplicar forma
+    fuerza_local *= factor_forma_local
+    fuerza_visitante *= factor_forma_visitante
+    
+    # Ventaja de localía (+20%)
+    fuerza_local_con_localia = fuerza_local * 1.2
+    
+    total_fuerza = fuerza_local_con_localia + fuerza_visitante
+    factor_local = fuerza_local_con_localia / total_fuerza if total_fuerza > 0 else 0.5
+    factor_visitante = fuerza_visitante / total_fuerza if total_fuerza > 0 else 0.5
+    
+    # Ajuste por diferencia de ranking
+    diff_ranking = ranking_visitante - ranking_local
+    if diff_ranking > 10:
+        factor_local += 0.05
+        factor_visitante -= 0.05
+    elif diff_ranking < -10:
+        factor_local -= 0.05
+        factor_visitante += 0.05
+    
+    # Normalizar
+    total = factor_local + factor_visitante
+    factor_local = factor_local / total
+    factor_visitante = factor_visitante / total
+    
+    # Calcular estadísticas
+    goles_local = round(stats_liga["goles"] * factor_local * 1.1, 1)
+    goles_visitante = round(stats_liga["goles"] * factor_visitante * 0.9, 1)
+    goles_totales = round(goles_local + goles_visitante, 1)
+    
+    corners_local = round(stats_liga["corners"] * factor_local * 1.1, 1)
+    corners_visitante = round(stats_liga["corners"] * factor_visitante * 0.9, 1)
+    corners_totales = round(corners_local + corners_visitante, 1)
+    
+    tiros_local = round(stats_liga["tiros"] * factor_local * 1.1, 1)
+    tiros_visitante = round(stats_liga["tiros"] * factor_visitante * 0.9, 1)
+    tiros_totales = round(tiros_local + tiros_visitante, 1)
+    
+    # Probabilidad de ambos marcan (BTTS)
+    prob_btts = round(min(85, 30 + (goles_local * 15) + (goles_visitante * 15)), 1)
+    
+    return {
+        "goles": {
+            "local": goles_local,
+            "visitante": goles_visitante,
+            "total": goles_totales
+        },
+        "corners": {
+            "local": corners_local,
+            "visitante": corners_visitante,
+            "total": corners_totales
+        },
+        "tiros": {
+            "local": tiros_local,
+            "visitante": tiros_visitante,
+            "total": tiros_totales
+        },
+        "btts_prob": prob_btts,
+        "factores": {
+            "forma_local": round(factor_forma_local, 2),
+            "forma_visitante": round(factor_forma_visitante, 2),
+            "factor_local": round(factor_local, 2),
+            "factor_visitante": round(factor_visitante, 2)
+        }
+    }
     # En app.py, agregar esta función:
 
 def obtener_jugadores_clave_partido(seleccion):
@@ -908,6 +1043,32 @@ HTML = """
 }
     
 
+// Función actualizada para mostrar factores de forma
+function analizarPartidoOptimizado() {
+    // ... código similar ...
+    
+    // Mostrar factores adicionales
+    if (data.factores) {
+        html += `
+            <div class="grid-3" style="margin-top: 10px;">
+                <div class="stat-card">
+                    📈 Forma ${data.local}: ${data.factores.forma_local}
+                    <small>Factor de rendimiento reciente</small>
+                </div>
+                <div class="stat-card">
+                    📈 Forma ${data.visitante}: ${data.factores.forma_visitante}
+                    <small>Factor de rendimiento reciente</small>
+                </div>
+                <div class="stat-card">
+                    🎯 BTTS: ${data.estadisticas.btts_prob}%
+                    <small>Ambos equipos marcan</small>
+                </div>
+            </div>
+        `;
+    }
+    // ...
+}
+
 
 function analizarPartido() {
     let local = document.getElementById('analisisLocal').value;
@@ -1779,6 +1940,35 @@ HTML_TOP_JUGADORES = """
 # ==================== RUTAS ====================
 
 # ==================== OPORTUNIDADES DE VALOR ====================
+
+@app.route('/api/analisis_partido_optimizado/<local>/<visitante>')
+def api_analisis_partido_optimizado(local, visitante):
+    """Análisis optimizado con caché y más variables"""
+    
+    # Intentar obtener de caché
+    prediccion = obtener_prediccion_cache(local, visitante)
+    
+    if not prediccion:
+        # Calcular nueva predicción
+        prediccion = predecir_estadisticas_partido_optimizado(local, visitante)
+        if prediccion:
+            guardar_prediccion_cache(local, visitante, prediccion)
+    
+    if not prediccion:
+        return jsonify({"error": "No se pudo generar la predicción"}), 404
+    
+    # Generar recomendaciones
+    recomendaciones = generar_recomendaciones(prediccion)
+    
+    return jsonify({
+        "local": local,
+        "visitante": visitante,
+        "estadisticas": prediccion,
+        "recomendaciones": recomendaciones,
+        "factores": prediccion.get("factores", {}),
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+
 
 @app.route('/api/valor_oportunidades')
 def api_valor_oportunidades():
