@@ -20,6 +20,41 @@ except Exception as e:
     print(f"❌ Error: {e}")
     coleccion = None
 
+# ==================== SISTEMA DE CACHÉ PARA PREDICCIONES ====================
+from datetime import datetime, timedelta
+
+def obtener_prediccion_cache(local, visitante):
+    """Obtiene predicción de caché si es reciente (menos de 6 horas)"""
+    try:
+        cache = db.predicciones_cache.find_one({
+            "local": local,
+            "visitante": visitante,
+            "timestamp": {"$gt": datetime.now() - timedelta(hours=6)}
+        })
+        
+        if cache:
+            print(f"📦 Caché usado para {local} vs {visitante}")
+            return cache.get('prediccion')
+    except Exception as e:
+        print(f"Error leyendo caché: {e}")
+    
+    return None
+
+def guardar_prediccion_cache(local, visitante, prediccion):
+    """Guarda predicción en caché"""
+    try:
+        db.predicciones_cache.update_one(
+            {"local": local, "visitante": visitante},
+            {"$set": {
+                "prediccion": prediccion,
+                "timestamp": datetime.now()
+            }},
+            upsert=True
+        )
+        print(f"💾 Predicción guardada en caché para {local} vs {visitante}")
+    except Exception as e:
+        print(f"Error guardando caché: {e}")
+
 # En app.py, agregar función de caché
 
 def obtener_prediccion_cache(local, visitante):
@@ -535,46 +570,65 @@ def calcular_fuerza_equipo(nombre_equipo):
     return fuerza
 
 def predecir_estadisticas_partido(equipo_local, equipo_visitante, liga="default"):
-    """Predice estadísticas del partido basado en ranking FIFA"""
+    """Predice estadísticas con sistema de caché"""
+    
+    # Intentar obtener de caché
+    cache = obtener_prediccion_cache(equipo_local, equipo_visitante)
+    if cache:
+        return cache
     
     stats_liga = ESTADISTICAS_POR_LIGA.get(liga, ESTADISTICAS_POR_LIGA["default"])
     
-    # Obtener ranking FIFA de los equipos desde MongoDB
+    # Obtener datos de los equipos
     local_data = db.selecciones.find_one({"nombre": equipo_local})
     visitante_data = db.selecciones.find_one({"nombre": equipo_visitante})
     
     if not local_data or not visitante_data:
-        print(f"⚠️ Datos no encontrados: {equipo_local} o {equipo_visitante}")
-        # Fallback a valores por defecto
-        ranking_local = 50
-        ranking_visitante = 50
-    else:
-        ranking_local = local_data.get('ranking_fifa', 50)
-        ranking_visitante = visitante_data.get('ranking_fifa', 50)
+        return None
     
-    print(f"🔍 DEBUG: {equipo_local} ranking {ranking_local}, {equipo_visitante} ranking {ranking_visitante}")
+    # Ranking FIFA
+    ranking_local = local_data.get('ranking_fifa', 50)
+    ranking_visitante = visitante_data.get('ranking_fifa', 50)
     
-    # Calcular fuerza del equipo (menor ranking = mejor = mayor fuerza)
-    # Formula: el mejor equipo (ranking 1) tiene fuerza 1.0, el peor (ranking 85) tiene fuerza ~0.15
-    fuerza_local = max(0.15, min(1.0, (100 - ranking_local) / 100))
-    fuerza_visitante = max(0.15, min(1.0, (100 - ranking_visitante) / 100))
+    # Forma reciente
+    forma_local = local_data.get('forma_reciente', {})
+    forma_visitante = visitante_data.get('forma_reciente', {})
     
-    # Aplicar ventaja de localía (+20% al local)
+    # Factor de forma (0.7 a 1.3)
+    factor_forma_local = 1.0
+    factor_forma_visitante = 1.0
+    
+    if forma_local:
+        puntos_local = forma_local.get('puntos', 0)
+        max_puntos = forma_local.get('ultimos_partidos', 5) * 3
+        if max_puntos > 0:
+            factor_forma_local = 0.7 + (puntos_local / max_puntos) * 0.6
+    
+    if forma_visitante:
+        puntos_visitante = forma_visitante.get('puntos', 0)
+        max_puntos = forma_visitante.get('ultimos_partidos', 5) * 3
+        if max_puntos > 0:
+            factor_forma_visitante = 0.7 + (puntos_visitante / max_puntos) * 0.6
+    
+    # Fuerza base
+    fuerza_local = max(0.2, min(0.95, (100 - ranking_local) / 100))
+    fuerza_visitante = max(0.2, min(0.95, (100 - ranking_visitante) / 100))
+    
+    # Aplicar forma
+    fuerza_local *= factor_forma_local
+    fuerza_visitante *= factor_forma_visitante
+    
+    # Ventaja de localía (+20%)
     fuerza_local_con_localia = fuerza_local * 1.2
     
-    # Calcular factor de distribución
     total_fuerza = fuerza_local_con_localia + fuerza_visitante
     factor_local = fuerza_local_con_localia / total_fuerza if total_fuerza > 0 else 0.5
     factor_visitante = fuerza_visitante / total_fuerza if total_fuerza > 0 else 0.5
     
-    print(f"   Fuerza local: {fuerza_local:.2f} (con localía: {fuerza_local_con_localia:.2f})")
-    print(f"   Fuerza visitante: {fuerza_visitante:.2f}")
-    print(f"   Factores: Local {factor_local:.2f} - Visitante {factor_visitante:.2f}")
-    
-    # Calcular estadísticas esperadas
-    goles_esperados_local = round(stats_liga["goles"] * factor_local * 1.1, 1)
-    goles_esperados_visitante = round(stats_liga["goles"] * factor_visitante * 0.9, 1)
-    goles_totales = round(goles_esperados_local + goles_esperados_visitante, 1)
+    # Calcular estadísticas
+    goles_local = round(stats_liga["goles"] * factor_local * 1.1, 1)
+    goles_visitante = round(stats_liga["goles"] * factor_visitante * 0.9, 1)
+    goles_totales = round(goles_local + goles_visitante, 1)
     
     corners_local = round(stats_liga["corners"] * factor_local * 1.1, 1)
     corners_visitante = round(stats_liga["corners"] * factor_visitante * 0.9, 1)
@@ -584,10 +638,10 @@ def predecir_estadisticas_partido(equipo_local, equipo_visitante, liga="default"
     tiros_visitante = round(stats_liga["tiros"] * factor_visitante * 0.9, 1)
     tiros_totales = round(tiros_local + tiros_visitante, 1)
     
-    return {
+    resultado = {
         "goles": {
-            "local": goles_esperados_local,
-            "visitante": goles_esperados_visitante,
+            "local": goles_local,
+            "visitante": goles_visitante,
             "total": goles_totales
         },
         "corners": {
@@ -599,9 +653,19 @@ def predecir_estadisticas_partido(equipo_local, equipo_visitante, liga="default"
             "local": tiros_local,
             "visitante": tiros_visitante,
             "total": tiros_totales
+        },
+        "factores": {
+            "forma_local": round(factor_forma_local, 2),
+            "forma_visitante": round(factor_forma_visitante, 2),
+            "ranking_local": ranking_local,
+            "ranking_visitante": ranking_visitante
         }
     }
-
+    
+    # Guardar en caché
+    guardar_prediccion_cache(equipo_local, equipo_visitante, resultado)
+    
+    return resultado
 def generar_recomendaciones(estadisticas):
     """Genera recomendaciones de apuesta incluyendo BTTS"""
     recomendaciones = []
