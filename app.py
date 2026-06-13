@@ -20,6 +20,34 @@ except Exception as e:
     print(f"❌ Error: {e}")
     coleccion = None
 
+# ==================== CARGAR ESTADÍSTICAS DE LIGAS DESDE MONGODB ====================
+
+def cargar_estadisticas_ligas():
+    """Carga estadísticas de ligas desde MongoDB"""
+    stats = {}
+    try:
+        datos = list(db.estadisticas_ligas.find({}, {'_id': 0}))
+        for d in datos:
+            stats[d['liga']] = {
+                "goles": d.get('goles', 2.65),
+                "corners": d.get('corners', 9.8),
+                "tiros": d.get('tiros', 21.5),
+                "tiros_puerta": d.get('tiros_puerta', 7.8),
+                "posesion": d.get('posesion', 50.0),
+                "faltas": d.get('faltas', 22.5),
+                "amarillas": d.get('amarillas', 3.8),
+                "rojas": d.get('rojas', 0.12)
+            }
+        print(f"✅ Estadísticas de {len(stats)} ligas cargadas desde MongoDB")
+        return stats
+    except Exception as e:
+        print(f"⚠️ Error cargando estadísticas: {e}")
+        print("   Usando valores por defecto...")
+        return {}
+
+# Cargar estadísticas al iniciar (después de conectar MongoDB)
+ESTADISTICAS_POR_LIGA = cargar_estadisticas_ligas()
+
 # ==================== SISTEMA DE CACHÉ PARA PREDICCIONES ====================
 from datetime import datetime, timedelta
 
