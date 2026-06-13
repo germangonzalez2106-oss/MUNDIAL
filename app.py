@@ -2355,11 +2355,10 @@ def nba_page():
     try:
         from sports_skills import nba
         
-        # HTML simplificado para NBA
         html_nba = """
         <!DOCTYPE html>
         <html>
-        <head>
+       <head>
             <title>NBA - Mundial 2026</title>
             <meta charset="UTF-8">
             <style>
@@ -2392,14 +2391,21 @@ def nba_page():
         for group in standings.get('data', {}).get('groups', []):
             conference = group.get('conference', 'Conferencia')
             html_nba += f'<div class="conference"><h2>{conference}</h2>'
-            html_nba += '<table><thead><tr><th>Equipo</th><th>Victorias</th><th>Derrotas</th><th>%</th></tr></thead><tbody>'
+            html_nba += '<table><thead><tr><th>Equipo</th><th>V</th><th>D</th><th>%</th></tr></thead><tbody>'
             
             for team in group.get('entries', []):
                 name = team.get('team', {}).get('name', 'N/A')
                 wins = team.get('wins', 0)
                 losses = team.get('losses', 0)
                 win_pct = team.get('win_pct', team.get('win_percentage', 0))
-                html_nba += f'<tr><td>{name}</td><td>{wins}</td><td>{losses}</td><td>{win_pct*100:.1f}%</td></tr>'
+                
+                # Convertir a número
+                try:
+                    pct_num = float(win_pct) if win_pct else 0
+                except (ValueError, TypeError):
+                    pct_num = 0
+                
+                html_nba += f'<tr><td>{name}</td><td>{wins}</td><td>{losses}</td><td>{pct_num*100:.1f}%</td></tr>'
             
             html_nba += '</tbody></table></div>'
         
@@ -2418,7 +2424,7 @@ def nba_page():
         """
     except Exception as e:
         return f"<h1>Error en NBA</h1><p>{str(e)}</p><a href='/'>Volver</a>"
-
+    
 @app.route('/tenis')
 def tenis_page():
     """Página de Tenis (opcional, no falla si no está instalado)"""
