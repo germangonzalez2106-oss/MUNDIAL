@@ -970,6 +970,8 @@ HTML = """
 <div class="container">
     <div class="nav">
         <a href="/">🏆 Ranking</a>
+        <a href="/nba">🏀 NBA</a>
+        <a href="/tenis">🎾 Tenis</a>
         <a href="/jugador">🔍 Jugadores</a>
         <a href="/eliminatorias">🌍 Eliminatorias</a>
         <a href="/resultados">📋 Resultados</a>
@@ -1403,7 +1405,7 @@ HTML_ELIMINATORIAS = """
 </head>
 <body>
 <div class="container">
-    <div class="nav"><a href="/">🏆 Ranking</a><a href="/jugador">🔍 Jugadores</a><a href="/eliminatorias">🌍 Eliminatorias</a><a href="/resultados">📋 Resultados</a><a href="/recomendaciones_jugadores">🎯 Recomendaciones</a><a href="/recomendaciones_jugadores">🎯 Recomendaciones</a>  <!-- NUEVO --></div>
+    <div class="nav"><a href="/">🏆 Ranking</a><a href="/nba">🏀 NBA</a><a href="/tenis">🎾 Tenis</a><a href="/jugador">🔍 Jugadores</a><a href="/eliminatorias">🌍 Eliminatorias</a><a href="/resultados">📋 Resultados</a><a href="/recomendaciones_jugadores">🎯 Recomendaciones</a>  <!-- NUEVO --></div>
     <h1>🌍 Eliminatorias por Continente</h1>
     
     <div class="continente">
@@ -1489,7 +1491,7 @@ HTML_JUGADOR = """
 </head>
 <body>
 <div class="container">
-    <div class="nav"><a href="/">🏆 Ranking</a><a href="/jugador">🔍 Jugadores</a><a href="/eliminatorias">🌍 Eliminatorias</a><a href="/resultados">📋 Resultados</a><a href="/recomendaciones_jugadores">🎯 Recomendaciones</a>  <!-- NUEVO --></div>
+    <div class="nav"><a href="/">🏆 Ranking</a><a href="/nba">🏀 NBA</a><a href="/tenis">🎾 Tenis</a><a href="/jugador">🔍 Jugadores</a><a href="/eliminatorias">🌍 Eliminatorias</a><a href="/resultados">📋 Resultados</a><a href="/recomendaciones_jugadores">🎯 Recomendaciones</a>  <!-- NUEVO --></div>
     <h1>🔍 Buscador de Jugadores</h1>
     <div class="flex"><input type="text" id="searchInput" placeholder="Ej: Messi, Ronaldo..."><button onclick="buscar()">Buscar</button></div>
     <div id="resultado" class="results"></div>
@@ -1547,7 +1549,9 @@ HTML_RESULTADOS = """
 <body>
 <div class="container">
     <div class="nav">
-        <a href="/">🏆 Ranking</a>
+       <a href="/">🏆 Ranking</a>
+        <a href="/nba">🏀 NBA</a>
+        <a href="/tenis">🎾 Tenis</a>
         <a href="/jugador">🔍 Jugadores</a>
         <a href="/eliminatorias">🌍 Eliminatorias</a>
         <a href="/resultados">📋 Resultados</a>
@@ -1673,6 +1677,8 @@ HTML_ESTADISTICAS_JUGADOR = """
 <div class="container">
     <div class="nav">
         <a href="/">🏆 Ranking</a>
+        <a href="/nba">🏀 NBA</a>
+        <a href="/tenis">🎾 Tenis</a>
         <a href="/jugador">🔍 Buscador</a>
         <a href="/eliminatorias">🌍 Eliminatorias</a>
         <a href="/resultados">📋 Resultados</a>
@@ -1802,6 +1808,8 @@ HTML_RECOMENDACIONES_JUGADOR = """
 <div class="container">
     <div class="nav">
         <a href="/">🏆 Ranking</a>
+        <a href="/nba">🏀 NBA</a>
+        <a href="/tenis">🎾 Tenis</a>
         <a href="/jugador">🔍 Jugadores</a>
         <a href="/eliminatorias">🌍 Eliminatorias</a>
         <a href="/resultados">📋 Resultados</a>
@@ -1947,6 +1955,8 @@ HTML_TOP_JUGADORES = """
 <div class="container">
     <div class="nav">
         <a href="/">🏆 Ranking</a>
+        <a href="/nba">🏀 NBA</a>
+        <a href="/tenis">🎾 Tenis</a>
         <a href="/jugador">🔍 Buscador</a>
         <a href="/eliminatorias">🌍 Eliminatorias</a>
         <a href="/resultados">📋 Resultados</a>
@@ -2336,6 +2346,153 @@ def estadisticas_jugador(nombre):
         """
     
     return render_template_string(HTML_ESTADISTICAS_JUGADOR, jugador=jugador)
+
+# ==================== NBA Y TENIS (OPCIONALES) ====================
+
+@app.route('/nba')
+def nba_page():
+    """Página de NBA (opcional, no falla si no está instalado)"""
+    try:
+        from sports_skills import nba
+        
+        # HTML simplificado para NBA
+        html_nba = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>NBA - Mundial 2026</title>
+            <meta charset="UTF-8">
+            <style>
+                body { font-family: Arial; background: #1a1a2e; color: white; padding: 20px; }
+                .container { max-width: 1200px; margin: 0 auto; }
+                h1 { color: #4CAF50; text-align: center; }
+                .nav { text-align: center; margin-bottom: 20px; }
+                .nav a { color: #4CAF50; margin: 0 10px; text-decoration: none; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                th, td { padding: 10px; text-align: left; border-bottom: 1px solid #333; }
+                th { background: #4CAF50; }
+                .conference { margin-top: 30px; }
+                .conference h2 { color: #FFC107; }
+            </style>
+        </head>
+        <body>
+        <div class="container">
+            <div class="nav">
+                <a href="/">🏆 Mundial</a>
+                <a href="/nba">🏀 NBA</a>
+                <a href="/tenis">🎾 Tenis</a>
+                <a href="/jugador">🔍 Jugadores</a>
+                <a href="/top_jugadores">⭐ Top</a>
+            </div>
+            <h1>🏀 NBA - Clasificación</h1>
+        """
+        
+        standings = nba.get_standings()
+        
+        for group in standings.get('data', {}).get('groups', []):
+            conference = group.get('conference', 'Conferencia')
+            html_nba += f'<div class="conference"><h2>{conference}</h2>'
+            html_nba += '<table><thead><tr><th>Equipo</th><th>Victorias</th><th>Derrotas</th><th>%</th></tr></thead><tbody>'
+            
+            for team in group.get('entries', []):
+                name = team.get('team', {}).get('name', 'N/A')
+                wins = team.get('wins', 0)
+                losses = team.get('losses', 0)
+                win_pct = team.get('win_percentage', 0)
+                html_nba += f'<tr><td>{name}</td><td>{wins}</td><td>{losses}</td><td>{win_pct*100:.1f}%</td></tr>'
+            
+            html_nba += '</tbody></table></div>'
+        
+        html_nba += '</div></body></html>'
+        return html_nba
+        
+    except ImportError:
+        return """
+        <html>
+        <body style="background:#1a1a2e;color:white;font-family:Arial;padding:20px;text-align:center">
+            <h1>🏀 NBA no disponible</h1>
+            <p>La librería sports-skills no está instalada en este entorno.</p>
+            <a href="/" style="color:#4CAF50">Volver al inicio</a>
+        </body>
+        </html>
+        """
+    except Exception as e:
+        return f"<h1>Error en NBA</h1><p>{str(e)}</p><a href='/'>Volver</a>"
+
+@app.route('/tenis')
+def tenis_page():
+    """Página de Tenis (opcional, no falla si no está instalado)"""
+    try:
+        from sports_skills import tennis
+        
+        html_tenis = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Tenis - Mundial 2026</title>
+            <meta charset="UTF-8">
+            <style>
+                body { font-family: Arial; background: #1a1a2e; color: white; padding: 20px; }
+                .container { max-width: 1200px; margin: 0 auto; }
+                h1 { color: #4CAF50; text-align: center; }
+                .nav { text-align: center; margin-bottom: 20px; }
+                .nav a { color: #4CAF50; margin: 0 10px; text-decoration: none; }
+                .rankings { display: flex; gap: 20px; flex-wrap: wrap; }
+                .rank-card { background: #0f3460; border-radius: 15px; padding: 20px; flex: 1; min-width: 300px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                th, td { padding: 8px; text-align: left; border-bottom: 1px solid #333; }
+                th { background: #4CAF50; }
+                .rank { font-weight: bold; color: #FFC107; }
+            </style>
+        </head>
+        <body>
+        <div class="container">
+            <div class="nav">
+                <a href="/">🏆 Mundial</a>
+                <a href="/nba">🏀 NBA</a>
+                <a href="/tenis">🎾 Tenis</a>
+                <a href="/jugador">🔍 Jugadores</a>
+                <a href="/top_jugadores">⭐ Top</a>
+            </div>
+            <h1>🎾 Tenis - Ranking Mundial</h1>
+            <div class="rankings">
+        """
+        
+        # Ranking ATP
+        atp = tennis.get_rankings(tour='ATP', limit=20)
+        html_tenis += '<div class="rank-card"><h2>🏆 Ranking ATP</h2><table><thead><tr><th>#</th><th>Jugador</th><th>Puntos</th></tr></thead><tbody>'
+        for player in atp.get('data', {}).get('rankings', [])[:15]:
+            rank = player.get('rank', 'N/A')
+            name = player.get('name', 'N/A')
+            points = player.get('points', 0)
+            html_tenis += f'<tr><td class="rank">{rank}</td><td>{name}</td><td>{points:.0f}</td></tr>'
+        html_tenis += '</tbody></table></div>'
+        
+        # Ranking WTA
+        wta = tennis.get_rankings(tour='WTA', limit=20)
+        html_tenis += '<div class="rank-card"><h2>🏆 Ranking WTA</h2><table><thead><tr><th>#</th><th>Jugador</th><th>Puntos</th></tr></thead><tbody>'
+        for player in wta.get('data', {}).get('rankings', [])[:15]:
+            rank = player.get('rank', 'N/A')
+            name = player.get('name', 'N/A')
+            points = player.get('points', 0)
+            html_tenis += f'<tr><td class="rank">{rank}</td><td>{name}</td><td>{points:.0f}</td></tr>'
+        html_tenis += '</tbody></table></div>'
+        
+        html_tenis += '</div></div></body></html>'
+        return html_tenis
+        
+    except ImportError:
+        return """
+        <html>
+        <body style="background:#1a1a2e;color:white;font-family:Arial;padding:20px;text-align:center">
+            <h1>🎾 Tenis no disponible</h1>
+            <p>La librería sports-skills no está instalada en este entorno.</p>
+            <a href="/" style="color:#4CAF50">Volver al inicio</a>
+        </body>
+        </html>
+        """
+    except Exception as e:
+        return f"<h1>Error en Tenis</h1><p>{str(e)}</p><a href='/'>Volver</a>"
 
 # ==================== NUEVAS FUNCIONES PARA RECOMENDACIONES DE JUGADORES ====================
 
