@@ -2398,7 +2398,7 @@ def nba_page():
                 name = team.get('team', {}).get('name', 'N/A')
                 wins = team.get('wins', 0)
                 losses = team.get('losses', 0)
-                win_pct = team.get('win_percentage', 0)
+                win_pct = team.get('win_pct', team.get('win_percentage', 0))
                 html_nba += f'<tr><td>{name}</td><td>{wins}</td><td>{losses}</td><td>{win_pct*100:.1f}%</td></tr>'
             
             html_nba += '</tbody></table></div>'
