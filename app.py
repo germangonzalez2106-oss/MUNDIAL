@@ -574,14 +574,14 @@ def calcular_fuerza_equipo(nombre_equipo):
     return fuerza
 
 def predecir_estadisticas_partido(equipo_local, equipo_visitante):
-    """Predice estadísticas usando datos REALES de selecciones"""
+    """Predice estadísticas usando datos REALES de selecciones desde MongoDB"""
     
     # Intentar obtener de caché
     cache = obtener_prediccion_cache(equipo_local, equipo_visitante)
     if cache:
         return cache
     
-    # Obtener estadísticas REALES de cada selección
+    # Obtener estadísticas REALES de cada selección (desde la colección que calculamos)
     stats_local = db.estadisticas_selecciones.find_one({"seleccion": equipo_local})
     stats_visitante = db.estadisticas_selecciones.find_one({"seleccion": equipo_visitante})
     
@@ -596,48 +596,28 @@ def predecir_estadisticas_partido(equipo_local, equipo_visitante):
     ranking_local = local_data.get('ranking_fifa', 50)
     ranking_visitante = visitante_data.get('ranking_fifa', 50)
     
-    # Goles base (de partidos reales de la selección)
+    # Goles base (de estadísticas REALES de la selección)
     if stats_local:
         goles_local_base = stats_local.get('goles_por_partido', 1.8)
         partidos_local = stats_local.get('partidos_analizados', 0)
+        print(f"📊 {equipo_local}: {goles_local_base} goles/partido ({partidos_local} partidos)")
     else:
         goles_local_base = 1.8
         partidos_local = 0
+        print(f"⚠️ {equipo_local}: sin estadísticas, usando valor por defecto")
     
     if stats_visitante:
         goles_visitante_base = stats_visitante.get('goles_por_partido', 1.8)
         partidos_visitante = stats_visitante.get('partidos_analizados', 0)
+        print(f"📊 {equipo_visitante}: {goles_visitante_base} goles/partido ({partidos_visitante} partidos)")
     else:
         goles_visitante_base = 1.8
         partidos_visitante = 0
+        print(f"⚠️ {equipo_visitante}: sin estadísticas, usando valor por defecto")
     
-    # Forma reciente
-    forma_local = local_data.get('forma_reciente', {})
-    forma_visitante = visitante_data.get('forma_reciente', {})
-    
-    # Factor de forma (0.7 a 1.3)
-    factor_forma_local = 1.0
-    factor_forma_visitante = 1.0
-    
-    if forma_local:
-        puntos_local = forma_local.get('puntos', 0)
-        max_puntos = forma_local.get('ultimos_partidos', 5) * 3
-        if max_puntos > 0:
-            factor_forma_local = 0.7 + (puntos_local / max_puntos) * 0.6
-    
-    if forma_visitante:
-        puntos_visitante = forma_visitante.get('puntos', 0)
-        max_puntos = forma_visitante.get('ultimos_partidos', 5) * 3
-        if max_puntos > 0:
-            factor_forma_visitante = 0.7 + (puntos_visitante / max_puntos) * 0.6
-    
-    # Fuerza por ranking (100 - ranking)/100
+    # Fuerza por ranking
     fuerza_local = max(0.2, min(0.95, (100 - ranking_local) / 100))
     fuerza_visitante = max(0.2, min(0.95, (100 - ranking_visitante) / 100))
-    
-    # Aplicar forma
-    fuerza_local *= factor_forma_local
-    fuerza_visitante *= factor_forma_visitante
     
     # Ventaja de localía (+20%)
     fuerza_local_con_localia = fuerza_local * 1.2
@@ -651,10 +631,9 @@ def predecir_estadisticas_partido(equipo_local, equipo_visitante):
     goles_visitante = round(goles_visitante_base * factor_visitante * 0.9, 1)
     goles_totales = round(goles_local + goles_visitante, 1)
     
-    # Calcular otras estadísticas (basadas en promedios de selecciones similares)
-    # Para corners, tiros, etc., usamos valores estándar ajustados por fuerza
-    corners_base = 5.0  # promedio mundial
-    tiros_base = 12.0   # promedio mundial
+    # Otras estadísticas (basadas en promedios ajustados por fuerza)
+    corners_base = 5.0
+    tiros_base = 12.0
     
     corners_local = round(corners_base * factor_local, 1)
     corners_visitante = round(corners_base * factor_visitante, 1)
@@ -685,8 +664,6 @@ def predecir_estadisticas_partido(equipo_local, equipo_visitante):
             "visitante": f"{partidos_visitante} partidos reales" if partidos_visitante > 0 else "estimado por ranking"
         },
         "factores": {
-            "forma_local": round(factor_forma_local, 2),
-            "forma_visitante": round(factor_forma_visitante, 2),
             "ranking_local": ranking_local,
             "ranking_visitante": ranking_visitante
         }
@@ -696,6 +673,7 @@ def predecir_estadisticas_partido(equipo_local, equipo_visitante):
     guardar_prediccion_cache(equipo_local, equipo_visitante, resultado)
     
     return resultado
+
 def generar_recomendaciones(estadisticas):
     """Genera recomendaciones de apuesta incluyendo BTTS"""
     recomendaciones = []
